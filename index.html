@@ -949,9 +949,4 @@
             const imageUrl = record.cover_image || record.thumb || '';
             const imageElement = imageUrl ? 
                 `<img src="${imageUrl}" alt="${record.title}" class="album-art" loading="lazy">` :
-                `<div class="no-image">🎵</div>`;
-
-            const primaryGenre = record.genres.length > 0 ? record.genres[0] : '';
-
-            card.innerHTML = `
-                ${imageElement}
+                `<div class
