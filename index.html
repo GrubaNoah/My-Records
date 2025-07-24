@@ -212,6 +212,17 @@
             padding: 20px 30px;
             border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stats-item.clickable {
+            cursor: pointer;
+        }
+
+        .stats-item.clickable:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(78, 205, 196, 0.4);
+            transform: translateY(-2px);
         }
 
         .stats-number {
@@ -373,6 +384,87 @@
             border: none;
         }
 
+        .artist-list {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .artist-list-content {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .artist-list h2 {
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .artist-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .artist-item:last-child {
+            border-bottom: none;
+        }
+
+        .artist-name {
+            font-weight: 500;
+        }
+
+        .artist-count {
+            color: #4ecdc4;
+            font-size: 0.9rem;
+            background: rgba(78, 205, 196, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -471,13 +563,21 @@
                 <span class="stats-number" id="totalRecords">0</span>
                 <span class="stats-label">Records</span>
             </div>
-            <div class="stats-item">
+            <div class="stats-item clickable" id="artistsStats">
                 <span class="stats-number" id="totalArtists">0</span>
                 <span class="stats-label">Artists</span>
             </div>
             <div class="stats-item">
                 <span class="stats-number" id="totalGenres">0</span>
                 <span class="stats-label">Genres</span>
+            </div>
+        </div>
+
+        <div class="artist-list" id="artistList">
+            <div class="artist-list-content">
+                <button class="close-btn" id="closeArtistList">×</button>
+                <h2>Artists in Collection</h2>
+                <div id="artistListContent"></div>
             </div>
         </div>
 
@@ -626,13 +726,44 @@
             const totalArtistsEl = document.getElementById('totalArtists');
             const totalGenresEl = document.getElementById('totalGenres');
 
-            const uniqueArtists = new Set(records.map(r => r.artist)).size;
-            const uniqueGenres = new Set(records.flatMap(r => r.genres)).size;
+            // Use filteredRecords to show current filtered stats
+            const currentRecords = filteredRecords.length > 0 ? filteredRecords : records;
+            const uniqueArtists = new Set(currentRecords.map(r => r.artist)).size;
+            const uniqueGenres = new Set(currentRecords.flatMap(r => r.genres)).size;
 
-            totalRecordsEl.textContent = records.length;
+            totalRecordsEl.textContent = currentRecords.length;
             totalArtistsEl.textContent = uniqueArtists;
             totalGenresEl.textContent = uniqueGenres;
             statsEl.style.display = 'flex';
+        }
+
+        function showArtistList() {
+            const currentRecords = filteredRecords.length > 0 ? filteredRecords : allRecords;
+            const artistCounts = {};
+            
+            // Count records per artist
+            currentRecords.forEach(record => {
+                const artist = record.artist;
+                artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            });
+
+            // Sort artists alphabetically
+            const sortedArtists = Object.entries(artistCounts).sort((a, b) => a[0].localeCompare(b[0]));
+            
+            const artistListContent = document.getElementById('artistListContent');
+            artistListContent.innerHTML = '';
+            
+            sortedArtists.forEach(([artist, count]) => {
+                const artistItem = document.createElement('div');
+                artistItem.className = 'artist-item';
+                artistItem.innerHTML = `
+                    <span class="artist-name">${artist}</span>
+                    <span class="artist-count">${count} record${count > 1 ? 's' : ''}</span>
+                `;
+                artistListContent.appendChild(artistItem);
+            });
+            
+            document.getElementById('artistList').style.display = 'flex';
         }
 
         function createGenreFilters(records) {
@@ -697,6 +828,7 @@
 
             filteredRecords = filtered;
             renderCollection(filteredRecords);
+            updateStats(allRecords); // Update stats based on current filter
         }
 
         // Event listeners
@@ -730,6 +862,21 @@
                 currentSort = e.target.getAttribute('data-sort');
                 filterAndSortRecords();
             });
+        });
+
+        // Artist stats click - secret button
+        document.getElementById('artistsStats').addEventListener('click', showArtistList);
+
+        // Close artist list
+        document.getElementById('closeArtistList').addEventListener('click', () => {
+            document.getElementById('artistList').style.display = 'none';
+        });
+
+        // Close artist list when clicking outside
+        document.getElementById('artistList').addEventListener('click', (e) => {
+            if (e.target.id === 'artistList') {
+                document.getElementById('artistList').style.display = 'none';
+            }
         });
 
         // Load collection
