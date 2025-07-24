@@ -853,7 +853,7 @@
             constructor() {
                 this.baseUrl = 'https://api.discogs.com';
                 this.headers = {
-                    'User-Agent': `${DISCOGS_USERNAME}/1.0`,
+                    'User-Agent': `${DISCOGS_USERNAME}/1.0 +https://example.com`,
                     'Authorization': `Discogs token=${DISCOGS_TOKEN}`
                 };
             }
@@ -867,19 +867,25 @@
                 let page = 1;
                 let hasMore = true;
 
-                while (hasMore) {
-                    const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
-                    
-                    try {
+                try {
+                    while (hasMore) {
+                        const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
+                        
+                        console.log(`Fetching page ${page}...`);
                         const response = await fetch(url, { headers: this.headers });
                         
                         if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('API Response:', response.status, errorText);
+                            
                             if (response.status === 401) {
                                 throw new Error('Invalid API token. Please check your token.');
                             } else if (response.status === 404) {
                                 throw new Error('User not found. Please check your username.');
+                            } else if (response.status === 429) {
+                                throw new Error('Rate limit exceeded. Please try again later.');
                             } else {
-                                throw new Error(`API Error: ${response.status}`);
+                                throw new Error(`API Error: ${response.status} - ${errorText}`);
                             }
                         }
 
@@ -889,16 +895,19 @@
                         hasMore = data.pagination.page < data.pagination.pages;
                         page++;
                         
+                        // Be respectful with rate limiting
                         if (hasMore) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
-                    } catch (error) {
-                        console.error('Fetch error:', error);
-                        throw error;
                     }
+                    
+                    console.log(`Successfully fetched ${allItems.length} records`);
+                    return allItems;
+                    
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    throw error;
                 }
-
-                return allItems;
             }
 
             async fetchAlbumDetails(releaseId) {
@@ -914,16 +923,26 @@
             }
         }
 
-        function getKallaxLocation(genre) {
-            const matchedGenre = Object.keys(KALLAX_GENRES).find(g => 
-                g.toLowerCase() === genre.toLowerCase()
-            );
-            return matchedGenre ? KALLAX_GENRES[matchedGenre] : 'Unknown';
+        function getKallaxLocation(genres) {
+            if (!genres || genres.length === 0) return 'Unknown';
+            
+            // Check each genre in order of preference
+            for (const genre of genres) {
+                const matchedGenre = Object.keys(KALLAX_GENRES).find(g => 
+                    g.toLowerCase() === genre.toLowerCase()
+                );
+                if (matchedGenre) {
+                    return KALLAX_GENRES[matchedGenre];
+                }
+            }
+            
+            return 'Unknown';
         }
 
         function formatRecordData(record) {
             const basic = record.basic_information;
-            const primaryGenre = basic.genres && basic.genres.length > 0 ? basic.genres[0] : 'Unknown';
+            const genres = basic.genres || [];
+            const styles = basic.styles || [];
             
             return {
                 id: basic.id,
@@ -935,18 +954,4 @@
                 formats: basic.formats ? basic.formats.map(f => f.name).join(', ') : '',
                 labels: basic.labels ? basic.labels.map(l => l.name).join(', ') : '',
                 date_added: record.date_added,
-                genres: basic.genres || [],
-                styles: basic.styles || [],
-                kallax_location: getKallaxLocation(primaryGenre)
-            };
-        }
-
-        function createRecordCard(record) {
-            const card = document.createElement('div');
-            card.className = `record-card ${currentView === 'compact' ? 'compact' : ''}`;
-            card.addEventListener('click', () => showAlbumDetails(record.id));
-            
-            const imageUrl = record.cover_image || record.thumb || '';
-            const imageElement = imageUrl ? 
-                `<img src="${imageUrl}" alt="${record.title}" class="album-art" loading="lazy">` :
-                `<div class
+                genres:
