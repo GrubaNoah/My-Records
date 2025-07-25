@@ -42,6 +42,7 @@ class DiscogsCollection {
         this.recordsPerCube = 60; // Default capacity
         this.positionCalculationNeeded = false;
         this.manualAssignments = this.loadManualAssignments(); // Load from localStorage
+        this.loadCustomGenreLocations(); // Load custom genre locations
     }
 
     async fetchCollection() {
@@ -638,7 +639,12 @@ class DiscogsCollection {
     createRecordCard(record) {
         const card = document.createElement('div');
         card.className = `record-card ${currentView === 'compact' ? 'compact' : ''}`;
-        card.addEventListener('click', () => this.showAlbumDetails(record.id));
+        card.addEventListener('click', (e) => {
+            // Only open album details if clicking on the card itself, not tags
+            if (!e.target.closest('.detail-tag')) {
+                this.showAlbumDetails(record.id);
+            }
+        });
         
         const imageUrl = record.cover_image || record.thumb || '';
         const imageElement = imageUrl ? 
@@ -646,16 +652,16 @@ class DiscogsCollection {
             `<div class="no-image">🎵</div>`;
 
         const genreTags = record.genres.slice(0, 2).map(genre => 
-            `<span class="detail-tag genre-tag clickable-tag" data-filter-genre="${genre}">${genre}</span>`
+            `<span class="detail-tag genre-tag clickable-filter-tag" data-filter-genre="${genre}" title="Show all ${genre} records">${genre}</span>`
         ).join('');
 
         const yearTag = record.year !== 'Unknown' ? 
-            `<span class="detail-tag clickable-tag" data-filter-year="${record.year}">${record.year}</span>` : '';
+            `<span class="detail-tag clickable-filter-tag" data-filter-year="${record.year}" title="Show all records from ${record.year}">${record.year}</span>` : '';
 
         const formatTag = record.formats ? 
-            `<span class="detail-tag" data-filter="${record.formats}">${record.formats}</span>` : '';
+            `<span class="detail-tag clickable-filter-tag" data-filter-format="${record.formats}" title="Show all ${record.formats} records">${record.formats}</span>` : '';
 
-        const kallaxTag = `<span class="detail-tag kallax-tag" data-record-id="${record.id}">${record.kallaxGenre}</span>`;
+        const kallaxTag = `<span class="detail-tag kallax-tag" data-record-id="${record.id}" title="Click to recategorize">${record.kallaxGenre}</span>`;
 
         card.innerHTML = `
             ${imageElement}
@@ -783,6 +789,7 @@ class DiscogsCollection {
                     <p><strong>Format:</strong> ${albumData.formats ? albumData.formats.map(f => f.name).join(', ') : 'Unknown'}</p>
                     <p><strong>Genres:</strong> ${albumData.genres ? albumData.genres.join(', ') : 'Unknown'}</p>
                     <p><strong>Styles:</strong> ${albumData.styles ? albumData.styles.join(', ') : 'Unknown'}</p>
+                    <p><strong>Kallax Location:</strong> <span style="color: #ff6b6b; font-weight: 600;">${allRecords.find(r => r.id == releaseId)?.kallax_location || 'Not calculated'}</span></p>
                     
                     ${tracklist.length > 0 ? `
                         <div class="tracklist">
@@ -891,6 +898,77 @@ class DiscogsCollection {
         this.filterRecords();
         
         this.pendingAssignments = {};
+    }
+
+    // Get genres for a specific cube in sorted order
+    getGenresForCube(cubeId) {
+        const genreLayout = [
+            { genre: 'Bluegrass', cubes: ['A1'] },
+            { genre: 'Country', cubes: ['A1'] },
+            { genre: 'Electronic', cubes: ['A1', 'B1'] },
+            { genre: 'Folk', cubes: ['B1'] },
+            { genre: 'Funk', cubes: ['B1'] },
+            { genre: 'Hip Hop', cubes: ['B2', 'C2', 'C3', 'C4'] },
+            { genre: 'Indie', cubes: ['C4'] },
+            { genre: 'Jam Band', cubes: ['D1'] },
+            { genre: 'Jazz', cubes: ['D1', 'D2'] },
+            { genre: 'Pop', cubes: ['D2'] },
+            { genre: 'R&B', cubes: ['D2'] },
+            { genre: 'Rock', cubes: ['D4'] },
+            { genre: 'Soul', cubes: ['D4'] },
+            { genre: 'Soundtracks', cubes: ['D4'] },
+            { genre: 'World', cubes: ['D4'] }
+        ];
+
+        // Get all genres that are in this cube
+        const genresInCube = genreLayout
+            .filter(layout => layout.cubes.includes(cubeId))
+            .map(layout => layout.genre);
+
+        // Add any custom genres that might be in this cube
+        Object.entries(this.customGenreLocations || {}).forEach(([customGenre, location]) => {
+            if (location.cube === cubeId) {
+                genresInCube.push(customGenre);
+            }
+        });
+
+        return genresInCube.sort();
+    }
+
+    // Add custom genre location to the system
+    addCustomGenreLocation(genreName, cubeId, position) {
+        if (!this.customGenreLocations) {
+            this.customGenreLocations = {};
+        }
+        
+        this.customGenreLocations[genreName] = {
+            cube: cubeId,
+            position: position
+        };
+        
+        // Save to localStorage
+        try {
+            localStorage.setItem('vinylVault_customGenreLocations', JSON.stringify(this.customGenreLocations));
+            console.log(`💾 Saved custom genre location: ${genreName} → ${cubeId}, ${position}`);
+        } catch (error) {
+            console.error('❌ Error saving custom genre locations:', error);
+        }
+    }
+
+    // Load custom genre locations from localStorage
+    loadCustomGenreLocations() {
+        try {
+            const saved = localStorage.getItem('vinylVault_customGenreLocations');
+            if (saved) {
+                this.customGenreLocations = JSON.parse(saved);
+                console.log(`✅ Loaded ${Object.keys(this.customGenreLocations).length} custom genre locations`);
+            } else {
+                this.customGenreLocations = {};
+            }
+        } catch (error) {
+            console.error('❌ Error loading custom genre locations:', error);
+            this.customGenreLocations = {};
+        }
     }
 
     // FIXED: Recategorize function with permanent localStorage persistence
@@ -1055,7 +1133,7 @@ document.querySelectorAll('.view-btn').forEach(btn => {
     });
 });
 
-// Genre filter
+// Genre filter and clickable tags
 document.addEventListener('click', (e) => {
     if (e.target.matches('.filter-btn')) {
         const newGenre = e.target.dataset.genre;
@@ -1071,13 +1149,16 @@ document.addEventListener('click', (e) => {
     }
 
     // Handle clickable year tags - clear search and filter by year
-    if (e.target.matches('.clickable-tag[data-filter-year]')) {
+    if (e.target.matches('.clickable-filter-tag[data-filter-year]')) {
         e.stopPropagation();
         const year = e.target.getAttribute('data-filter-year');
         
-        // Clear search box and show all albums from that year
+        // Clear search box and reset genre filter
         document.getElementById('searchBox').value = '';
         document.getElementById('searchClear').classList.remove('visible');
+        currentGenre = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
         
         if (discogsCollection) {
             // Filter to show all records from that year
@@ -1091,13 +1172,16 @@ document.addEventListener('click', (e) => {
     }
 
     // Handle clickable genre tags - clear search and filter by that Discogs genre
-    if (e.target.matches('.clickable-tag[data-filter-genre]')) {
+    if (e.target.matches('.clickable-filter-tag[data-filter-genre]')) {
         e.stopPropagation();
         const genre = e.target.getAttribute('data-filter-genre');
         
-        // Clear search box and show all albums with that genre
+        // Clear search box and reset genre filter
         document.getElementById('searchBox').value = '';
         document.getElementById('searchClear').classList.remove('visible');
+        currentGenre = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
         
         if (discogsCollection) {
             // Filter to show all records with that Discogs genre/style
@@ -1113,15 +1197,28 @@ document.addEventListener('click', (e) => {
         }
     }
 
-    // Handle other clickable tags (formats, etc.) - old behavior
-    if (e.target.matches('.detail-tag[data-filter]')) {
+    // Handle clickable format tags - clear search and filter by format
+    if (e.target.matches('.clickable-filter-tag[data-filter-format]')) {
         e.stopPropagation();
-        const filterValue = e.target.getAttribute('data-filter');
-        document.getElementById('searchBox').value = filterValue;
-        document.getElementById('searchClear').classList.add('visible');
+        const format = e.target.getAttribute('data-filter-format');
+        
+        // Clear search box and reset genre filter
+        document.getElementById('searchBox').value = '';
+        document.getElementById('searchClear').classList.remove('visible');
+        currentGenre = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
         
         if (discogsCollection) {
-            discogsCollection.filterRecords(filterValue);
+            // Filter to show all records with that format
+            filteredRecords = allRecords.filter(record =>
+                record.formats.toLowerCase().includes(format.toLowerCase())
+            );
+            displayedRecords = filteredRecords;
+            discogsCollection.updateStats();
+            discogsCollection.sortRecords();
+            
+            console.log(`💿 Showing all albums with format "${format}": ${filteredRecords.length} records`);
         }
     }
 
@@ -1161,7 +1258,7 @@ document.getElementById('genresStats').addEventListener('click', () => {
     showGenreModal();
 });
 
-// Home title click - reset everything
+// Home title click - reset everything and clear search
 document.getElementById('homeTitle').addEventListener('click', () => {
     currentGenre = 'all';
     document.getElementById('searchBox').value = '';
@@ -1171,7 +1268,7 @@ document.getElementById('homeTitle').addEventListener('click', () => {
     
     if (discogsCollection) {
         discogsCollection.updateGenreFilters();
-        discogsCollection.filterRecords();
+        discogsCollection.filterRecords(''); // Clear any filters
     }
 });
 
@@ -1257,7 +1354,7 @@ function showGenreModal() {
     modal.style.display = 'flex';
 }
 
-// FIXED: Recategorize modal with proper record finding
+// FIXED: Recategorize modal with proper record finding and modal reset
 function showRecategorizeModal(recordId) {
     console.log(`🔄 Showing recategorize modal for record ${recordId}`);
     
@@ -1272,6 +1369,13 @@ function showRecategorizeModal(recordId) {
 
     console.log(`✅ Found record: ${record.artist} - ${record.title} (${record.kallaxGenre})`);
 
+    // Reset modal to default state
+    document.getElementById('recategorizeDropdown').style.display = 'block';
+    document.getElementById('recatAddNew').style.display = 'block';
+    document.getElementById('recatNewInput').style.display = 'none';
+    document.getElementById('recatNewInput').value = '';
+
+    // Populate modal
     document.getElementById('recatArtist').textContent = record.artist;
     document.getElementById('recatTitle').textContent = record.title;
     document.getElementById('currentGenre').textContent = record.kallaxGenre;
@@ -1400,21 +1504,33 @@ document.getElementById('skipNewAssignments').addEventListener('click', () => {
     document.getElementById('newRecordModal').style.display = 'none';
 });
 
-// FIXED: Recategorize modal handlers with proper functionality
+// FIXED: Recategorize modal handlers with custom genre creation
 document.getElementById('cancelRecategorize').addEventListener('click', () => {
+    // Reset modal state
+    document.getElementById('recategorizeDropdown').style.display = 'block';
+    document.getElementById('recatAddNew').style.display = 'block';
+    document.getElementById('recatNewInput').style.display = 'none';
+    document.getElementById('recatNewInput').value = '';
     document.getElementById('recategorizeModal').style.display = 'none';
 });
 
 document.getElementById('saveRecategorize').addEventListener('click', () => {
     const recordId = document.getElementById('recategorizeModal').getAttribute('data-record-id');
-    const newGenre = document.getElementById('recategorizeDropdown').value || 
+    let newGenre = document.getElementById('recategorizeDropdown').value || 
                    document.getElementById('recatNewInput').value.trim();
     
     console.log(`💾 Saving recategorization: Record ${recordId} → ${newGenre}`);
     
     if (newGenre && discogsCollection) {
         discogsCollection.recategorizeRecord(recordId, newGenre);
+        
+        // Reset modal state
+        document.getElementById('recategorizeDropdown').style.display = 'block';
+        document.getElementById('recatAddNew').style.display = 'block';
+        document.getElementById('recatNewInput').style.display = 'none';
+        document.getElementById('recatNewInput').value = '';
         document.getElementById('recategorizeModal').style.display = 'none';
+        
         console.log(`✅ Recategorization saved successfully`);
     } else {
         console.error(`❌ Cannot save: newGenre="${newGenre}", discogsCollection exists: ${!!discogsCollection}`);
@@ -1432,18 +1548,27 @@ document.getElementById('recatNewInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const newGenre = e.target.value.trim();
         if (newGenre) {
-            // Add to dropdown
+            // Add to dropdown for this session
             const dropdown = document.getElementById('recategorizeDropdown');
-            const option = document.createElement('option');
-            option.value = newGenre;
-            option.textContent = newGenre;
-            option.selected = true;
-            dropdown.appendChild(option);
+            
+            // Check if genre already exists
+            const existingOption = dropdown.querySelector(`option[value="${newGenre}"]`);
+            if (!existingOption) {
+                const option = document.createElement('option');
+                option.value = newGenre;
+                option.textContent = newGenre;
+                option.selected = true;
+                dropdown.appendChild(option);
+                console.log(`➕ Added new genre option: ${newGenre}`);
+            } else {
+                existingOption.selected = true;
+            }
             
             // Show dropdown again
             dropdown.style.display = 'block';
             e.target.style.display = 'none';
             document.getElementById('recatAddNew').style.display = 'block';
+            e.target.value = '';
         }
     }
 });
