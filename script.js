@@ -117,52 +117,51 @@ class DiscogsCollection {
 
     async loadCSVData() {
         try {
+            console.log('Loading CSV data...');
             const response = await fetch('./Final_Genre-Tagged_Collection.csv');
-            const csvData = await response.text();
             
-            // Parse CSV data
+            if (!response.ok) {
+                throw new Error(`CSV fetch failed: ${response.status}`);
+            }
+            
+            const csvData = await response.text();
+            console.log('CSV data loaded, parsing...');
+            
+            // Parse CSV data - much faster parsing
             const lines = csvData.trim().split('\n');
-            const headers = lines[0].split('\t');
             
             this.csvRecords = {};
             this.genreLearningData = {};
             
+            // Skip header, process data rows
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split('\t');
+                if (values.length < 4) continue; // Skip malformed rows
+                
                 const genre = values[1];
                 const artist = values[2];
                 const title = values[3];
-                const year = values[4];
                 
-                // Create a key for matching with Discogs data
+                // Create matching key
                 const key = this.createMatchingKey(artist, title);
                 this.csvRecords[key] = {
                     genre: genre,
                     artist: artist,
-                    title: title,
-                    year: year
+                    title: title
                 };
                 
-                // Collect learning data - track artist to genre patterns
+                // Build learning data
+                const kallaxGenre = this.mapCSVGenreToKallax(genre);
                 if (!this.genreLearningData[artist]) {
                     this.genreLearningData[artist] = {};
                 }
-                const kallaxGenre = this.mapCSVGenreToKallax(genre);
                 this.genreLearningData[artist][kallaxGenre] = (this.genreLearningData[artist][kallaxGenre] || 0) + 1;
             }
             
-            console.log(`Loaded ${Object.keys(this.csvRecords).length} records from CSV`);
-            console.log(`Learning patterns from ${Object.keys(this.genreLearningData).length} artists`);
-            
-            // Debug: Show some matching examples
-            console.log('Sample CSV matching keys:');
-            Object.keys(this.csvRecords).slice(0, 5).forEach(key => {
-                const record = this.csvRecords[key];
-                console.log(`"${key}" → ${record.genre} (${record.artist} - ${record.title})`);
-            });
+            console.log(`✅ CSV loaded: ${Object.keys(this.csvRecords).length} records, ${Object.keys(this.genreLearningData).length} artists`);
             
         } catch (error) {
-            console.error('Could not load CSV data:', error);
+            console.error('❌ CSV loading failed:', error);
             this.csvRecords = {};
             this.genreLearningData = {};
         }
@@ -231,39 +230,28 @@ class DiscogsCollection {
         const genres = basic.genres || [];
         const styles = basic.styles || [];
         
-        // Try to match with CSV data first
-        const matchingKey = this.createMatchingKey(
-            basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist',
-            basic.title
-        );
+        const artist = basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist';
+        const title = basic.title;
         
-        const csvMatch = this.csvRecords ? this.csvRecords[matchingKey] : null;
-        
-        // Debug matching
-        if (!csvMatch && this.csvRecords) {
-            console.log(`No CSV match for: "${matchingKey}" (${basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown'} - ${basic.title})`);
-        } else if (csvMatch) {
-            console.log(`CSV match found: ${csvMatch.artist} - ${csvMatch.title} → ${csvMatch.genre}`);
-        }
+        // Quick CSV lookup
+        const matchingKey = this.createMatchingKey(artist, title);
+        const csvMatch = this.csvRecords[matchingKey];
         
         let assignedGenre = 'Unassigned';
         if (csvMatch) {
-            // Use CSV genre assignment
             assignedGenre = this.mapCSVGenreToKallax(csvMatch.genre);
         } else {
-            // New record not in CSV - use learning + algorithm for future additions
-            assignedGenre = this.assignGenreFromDiscogs(genres, styles, basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist');
+            assignedGenre = this.assignGenreFromDiscogs(genres, styles, artist);
         }
         
         return {
             id: basic.id,
-            title: basic.title,
-            artist: basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist',
+            title: title,
+            artist: artist,
             year: basic.year || 'Unknown',
             thumb: basic.thumb || '',
             cover_image: basic.cover_image || basic.thumb || '',
             formats: basic.formats ? basic.formats.map(f => f.name).join(', ') : '',
-            labels: basic.labels ? basic.labels.map(l => l.name).join(', ') : '',
             date_added: record.date_added,
             genres: genres,
             styles: styles,
@@ -273,31 +261,31 @@ class DiscogsCollection {
     }
 
     assignGenreFromDiscogs(genres, styles, artist) {
-        // Try to learn from artist patterns first
-        const learnedGenre = this.predictGenreFromArtist(artist);
-        if (learnedGenre && learnedGenre !== 'Unknown') {
-            console.log(`Learned: ${artist} → ${learnedGenre} (from your collection patterns)`);
-            return learnedGenre;
+        // Quick artist lookup first
+        const learnedGenre = this.genreLearningData[artist];
+        if (learnedGenre) {
+            const mostCommon = Object.entries(learnedGenre).sort(([,a], [,b]) => b - a)[0];
+            if (mostCommon) return mostCommon[0];
         }
 
-        // Fallback to enhanced algorithm using your CSV patterns
-        const genreMapping = this.buildSmartGenreMapping();
-
-        for (const [kallaxGenre, searchTerms] of Object.entries(genreMapping)) {
-            const found = [...genres, ...styles].some(term => 
-                searchTerms.some(searchTerm => 
-                    term.toLowerCase().includes(searchTerm) || 
-                    searchTerm.includes(term.toLowerCase())
-                )
-            );
-            
-            if (found) {
-                console.log(`Algorithm: ${artist} → ${kallaxGenre} (matched: ${[...genres, ...styles].join(', ')})`);
-                return kallaxGenre;
-            }
-        }
+        // Fast genre mapping
+        const allTerms = [...genres, ...styles].map(t => t.toLowerCase());
         
-        console.log(`Unassigned: ${artist} - genres: ${[...genres, ...styles].join(', ')}`);
+        // Quick mapping check
+        if (allTerms.some(t => t.includes('hip hop') || t.includes('rap'))) return 'Hip Hop';
+        if (allTerms.some(t => t.includes('electronic') || t.includes('techno'))) return 'Electronic';
+        if (allTerms.some(t => t.includes('rock'))) return 'Rock';
+        if (allTerms.some(t => t.includes('jazz'))) return 'Jazz';
+        if (allTerms.some(t => t.includes('folk') || t.includes('country'))) return 'Folk';
+        if (allTerms.some(t => t.includes('funk'))) return 'Funk';
+        if (allTerms.some(t => t.includes('indie') || t.includes('alternative'))) return 'Indie';
+        if (allTerms.some(t => t.includes('pop'))) return 'Pop';
+        if (allTerms.some(t => t.includes('soul'))) return 'Soul';
+        if (allTerms.some(t => t.includes('r&b') || t.includes('rnb'))) return 'R&B';
+        if (allTerms.some(t => t.includes('world') || t.includes('reggae'))) return 'World';
+        if (allTerms.some(t => t.includes('bluegrass'))) return 'Bluegrass';
+        if (allTerms.some(t => t.includes('jam'))) return 'Jam Band';
+        
         return 'Unassigned';
     }
 
@@ -651,37 +639,18 @@ class DiscogsCollection {
     }
 
     calculateAllPositions(genreLayout) {
-        // Group records by cube and genre section
-        const cubeArrangement = {};
-
-        // Initialize cube arrangement
+        console.log('Calculating Kallax positions...');
+        
+        // Simple position calculation
         genreLayout.forEach(layout => {
-            layout.cubes.forEach(cube => {
-                if (!cubeArrangement[cube]) {
-                    cubeArrangement[cube] = [];
-                }
-            });
-        });
-
-        // Process each genre and place records
-        genreLayout.forEach(layout => {
-            // Get all records for this Kallax genre
             const genreRecords = allRecords.filter(record => 
                 record.kallaxGenre === layout.genre
             );
 
-            // Sort: alphabetically by artist, then by release year
-            genreRecords.sort((a, b) => {
-                const artistCompare = a.artist.localeCompare(b.artist);
-                if (artistCompare !== 0) return artistCompare;
-                
-                // If same artist, sort by year
-                const yearA = a.year === 'Unknown' ? 9999 : parseInt(a.year);
-                const yearB = b.year === 'Unknown' ? 9999 : parseInt(b.year);
-                return yearA - yearB;
-            });
+            // Quick sort
+            genreRecords.sort((a, b) => a.artist.localeCompare(b.artist));
 
-            // Distribute records across cubes for this genre
+            // Assign positions
             let recordIndex = 0;
             layout.cubes.forEach(cube => {
                 const recordsForThisCube = genreRecords.slice(
@@ -689,33 +658,16 @@ class DiscogsCollection {
                     recordIndex + this.recordsPerCube
                 );
                 
-                cubeArrangement[cube] = cubeArrangement[cube].concat(
-                    recordsForThisCube.map(record => ({
-                        ...record,
-                        kallaxGenre: layout.genre
-                    }))
-                );
+                recordsForThisCube.forEach((record, index) => {
+                    const position = index + 1;
+                    record.kallax_location = `${cube}, ${position}`;
+                });
                 
                 recordIndex += this.recordsPerCube;
             });
         });
 
-        // Calculate final positions within each cube
-        Object.keys(cubeArrangement).forEach(cube => {
-            cubeArrangement[cube].forEach((record, index) => {
-                const position = index + 1; // 1-based positioning
-                const originalRecord = allRecords.find(r => r.id === record.id);
-                if (originalRecord) {
-                    originalRecord.kallax_location = `${cube}, ${position}`;
-                }
-            });
-        });
-
-        console.log('Updated all Kallax locations with precise positions');
-        console.log('Cube arrangement summary:');
-        Object.keys(cubeArrangement).forEach(cube => {
-            console.log(`${cube}: ${cubeArrangement[cube].length} records`);
-        });
+        console.log('✅ Positions calculated');
     }
 
     async showAlbumDetails(releaseId) {
