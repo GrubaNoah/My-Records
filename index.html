@@ -931,6 +931,9 @@
                     throw new Error('Please configure your Discogs username and API token');
                 }
 
+                // First, load the CSV data
+                await this.loadCSVData();
+
                 let allItems = [];
                 let page = 1;
                 let totalPages = 1;
@@ -970,7 +973,6 @@
                         page++;
 
                         if (page === 2) {
-                            // Process first batch immediately but avoid duplicates later
                             const firstBatch = allItems.slice(0, 100);
                             this.processAndDisplayRecords(firstBatch);
                         }
@@ -982,7 +984,6 @@
 
                     progressContainer.style.display = 'none';
                     
-                    // Final processing - only process if we haven't processed all items yet
                     const processedIds = new Set(allRecords.map(r => r.id));
                     const unprocessedItems = allItems.filter(item => !processedIds.has(item.basic_information.id));
                     
@@ -990,7 +991,6 @@
                         this.processAndDisplayRecords(unprocessedItems);
                     }
                     
-                    // Analyze collection formats for Kallax algorithm
                     this.analyzeCollectionFormats();
                     
                     return allItems;
@@ -999,6 +999,48 @@
                     progressContainer.style.display = 'none';
                     throw error;
                 }
+            }
+
+            async loadCSVData() {
+                try {
+                    const csvData = await window.fs.readFile('Final_GenreTagged_Collection.csv', { encoding: 'utf8' });
+                    
+                    // Parse CSV data
+                    const lines = csvData.trim().split('\n');
+                    const headers = lines[0].split('\t');
+                    
+                    this.csvRecords = {};
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split('\t');
+                        const genre = values[1];
+                        const artist = values[2];
+                        const title = values[3];
+                        const year = values[4];
+                        
+                        // Create a key for matching with Discogs data
+                        const key = this.createMatchingKey(artist, title);
+                        this.csvRecords[key] = {
+                            genre: genre,
+                            artist: artist,
+                            title: title,
+                            year: year
+                        };
+                    }
+                    
+                    console.log(`Loaded ${Object.keys(this.csvRecords).length} records from CSV`);
+                    
+                } catch (error) {
+                    console.error('Could not load CSV data:', error);
+                    this.csvRecords = {};
+                }
+            }
+
+            createMatchingKey(artist, title) {
+                // Clean and normalize for matching
+                const cleanArtist = artist.toLowerCase().replace(/[^\w\s]/g, '').trim();
+                const cleanTitle = title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+                return `${cleanArtist}|||${cleanTitle}`;
             }
 
             removeDuplicateReleases(releases) {
@@ -1238,6 +1280,23 @@
                 const genres = basic.genres || [];
                 const styles = basic.styles || [];
                 
+                // Try to match with CSV data first
+                const matchingKey = this.createMatchingKey(
+                    basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist',
+                    basic.title
+                );
+                
+                const csvMatch = this.csvRecords ? this.csvRecords[matchingKey] : null;
+                
+                let assignedGenre = 'Unassigned';
+                if (csvMatch) {
+                    // Use CSV genre assignment
+                    assignedGenre = this.mapCSVGenreToKallax(csvMatch.genre);
+                } else {
+                    // New record not in CSV - use learning + algorithm for future additions
+                    assignedGenre = this.assignGenreFromDiscogs(genres, styles, basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist');
+                }
+                
                 return {
                     id: basic.id,
                     title: basic.title,
@@ -1250,7 +1309,127 @@
                     date_added: record.date_added,
                     genres: genres,
                     styles: styles,
-                    kallax_location: this.getKallaxLocation(genres)
+                    kallaxGenre: assignedGenre,
+                    fromCSV: !!csvMatch
+                };
+            }
+
+            mapCSVGenreToKallax(csvGenre) {
+                // Map your CSV genres to Kallax categories
+                const genreMap = {
+                    'Hip-Hop': 'Hip Hop',
+                    'Alt Rock': 'Rock',
+                    'Country': 'Folk', // You put Country records in Folk section
+                    'Compilation': 'Unassigned', // Special handling needed
+                    'Synthpop': 'Pop', // You moved this to Pop
+                    'Latin': 'World',
+                    'Reggae': 'World'
+                };
+                
+                return genreMap[csvGenre] || csvGenre;
+            }
+
+            async loadCSVData() {
+                try {
+                    const csvData = await window.fs.readFile('Final_GenreTagged_Collection.csv', { encoding: 'utf8' });
+                    
+                    // Parse CSV data
+                    const lines = csvData.trim().split('\n');
+                    const headers = lines[0].split('\t');
+                    
+                    this.csvRecords = {};
+                    this.genreLearningData = {}; // New: collect patterns for learning
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split('\t');
+                        const genre = values[1];
+                        const artist = values[2];
+                        const title = values[3];
+                        const year = values[4];
+                        
+                        // Create a key for matching with Discogs data
+                        const key = this.createMatchingKey(artist, title);
+                        this.csvRecords[key] = {
+                            genre: genre,
+                            artist: artist,
+                            title: title,
+                            year: year
+                        };
+                        
+                        // Collect learning data - track artist to genre patterns
+                        if (!this.genreLearningData[artist]) {
+                            this.genreLearningData[artist] = {};
+                        }
+                        const kallaxGenre = this.mapCSVGenreToKallax(genre);
+                        this.genreLearningData[artist][kallaxGenre] = (this.genreLearningData[artist][kallaxGenre] || 0) + 1;
+                    }
+                    
+                    console.log(`Loaded ${Object.keys(this.csvRecords).length} records from CSV`);
+                    console.log(`Learning patterns from ${Object.keys(this.genreLearningData).length} artists`);
+                    
+                } catch (error) {
+                    console.error('Could not load CSV data:', error);
+                    this.csvRecords = {};
+                    this.genreLearningData = {};
+                }
+            }
+
+            assignGenreFromDiscogs(genres, styles, artist) {
+                // Try to learn from artist patterns first
+                const learnedGenre = this.predictGenreFromArtist(artist);
+                if (learnedGenre && learnedGenre !== 'Unknown') {
+                    console.log(`Learned: ${artist} → ${learnedGenre} (from your collection patterns)`);
+                    return learnedGenre;
+                }
+
+                // Fallback to enhanced algorithm using your CSV patterns
+                const genreMapping = this.buildSmartGenreMapping();
+
+                for (const [kallaxGenre, searchTerms] of Object.entries(genreMapping)) {
+                    const found = [...genres, ...styles].some(term => 
+                        searchTerms.some(searchTerm => 
+                            term.toLowerCase().includes(searchTerm) || 
+                            searchTerm.includes(term.toLowerCase())
+                        )
+                    );
+                    
+                    if (found) {
+                        console.log(`Algorithm: ${artist} → ${kallaxGenre} (matched: ${[...genres, ...styles].join(', ')})`);
+                        return kallaxGenre;
+                    }
+                }
+                
+                console.log(`Unassigned: ${artist} - genres: ${[...genres, ...styles].join(', ')}`);
+                return 'Unassigned';
+            }
+
+            predictGenreFromArtist(artist) {
+                if (!this.genreLearningData[artist]) return 'Unknown';
+                
+                // Find the most common genre for this artist in your collection
+                const artistGenres = this.genreLearningData[artist];
+                const mostCommonGenre = Object.entries(artistGenres)
+                    .sort(([,a], [,b]) => b - a)[0];
+                
+                return mostCommonGenre ? mostCommonGenre[0] : 'Unknown';
+            }
+
+            buildSmartGenreMapping() {
+                // Enhanced mapping based on analyzing your CSV collection
+                return {
+                    'Bluegrass': ['bluegrass', 'newgrass'],
+                    'Electronic': ['electronic', 'techno', 'house', 'ambient', 'idm', 'drum n bass', 'dubstep', 'downtempo'],
+                    'Folk': ['folk', 'country', 'americana', 'singer/songwriter', 'acoustic'],
+                    'Funk': ['funk', 'p-funk'],
+                    'Hip Hop': ['hip hop', 'hip-hop', 'rap', 'trap', 'conscious rap'],
+                    'Indie': ['indie', 'alternative', 'lo-fi', 'indie rock', 'indie pop'],
+                    'Jam Band': ['jam band', 'jam', 'psychedelic rock', 'grateful dead'],
+                    'Jazz': ['jazz', 'bebop', 'swing', 'fusion', 'smooth jazz', 'contemporary jazz'],
+                    'Pop': ['pop', 'dance', 'disco', 'synthpop', 'dance-pop'], // Added synthpop here
+                    'R&B': ['r&b', 'rnb', 'rhythm & blues', 'neo soul', 'contemporary r&b'],
+                    'Rock': ['rock', 'classic rock', 'hard rock', 'punk', 'metal', 'grunge', 'alternative rock'],
+                    'Soul': ['soul', 'motown', 'northern soul', 'classic soul'],
+                    'World': ['world', 'reggae', 'latin', 'african', 'celtic', 'international', 'world music']
                 };
             }
 
@@ -1296,7 +1475,7 @@
             }
 
             updateGenreFilters() {
-                // Use only Noah's specific Kallax genres - no sub-genres
+                // Use your exact CSV genres plus Kallax mappings
                 const kallaxGenres = [
                     'Bluegrass', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
                     'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'World'
@@ -1308,7 +1487,7 @@
                 // Count records for each Kallax genre
                 kallaxGenres.forEach(kallaxGenre => {
                     const count = allRecords.filter(record => 
-                        this.recordMatchesKallaxGenre(record, kallaxGenre)
+                        record.kallaxGenre === kallaxGenre
                     ).length;
                     
                     if (count > 0) {
@@ -1316,7 +1495,16 @@
                     }
                 });
 
-                // Create filter buttons for genres that have records
+                // Add count for unassigned records
+                const unassignedCount = allRecords.filter(record => 
+                    record.kallaxGenre === 'Unassigned'
+                ).length;
+                
+                if (unassignedCount > 0) {
+                    genreCounts['Unassigned'] = unassignedCount;
+                }
+
+                // Create filter buttons
                 genreFilters.innerHTML = `
                     <button class="filter-btn ${currentGenre === 'all' ? 'active' : ''}" data-genre="all">
                         All Genres
@@ -1324,7 +1512,7 @@
                 `;
 
                 Object.entries(genreCounts)
-                    .sort(([,a], [,b]) => b - a) // Sort by count
+                    .sort(([,a], [,b]) => b - a)
                     .forEach(([genre, count]) => {
                         const button = document.createElement('button');
                         button.className = `filter-btn ${currentGenre === genre ? 'active' : ''}`;
@@ -1333,42 +1521,8 @@
                         genreFilters.appendChild(button);
                     });
 
-                // Always show as "Filter by Genre"
                 const filterLabel = document.getElementById('filterLabel');
                 filterLabel.textContent = 'Filter by Genre';
-            }
-
-            recordMatchesKallaxGenre(record, kallaxGenre) {
-                // Map Discogs genres to Noah's Kallax genres
-                const genreMapping = {
-                    'Bluegrass': ['bluegrass'],
-                    'Electronic': ['electronic', 'techno', 'house', 'ambient', 'idm', 'drum n bass', 'dubstep'],
-                    'Folk': ['folk', 'country', 'americana', 'singer/songwriter'],
-                    'Funk': ['funk'],
-                    'Hip Hop': ['hip hop', 'hip-hop', 'rap', 'trap'],
-                    'Indie': ['indie', 'alternative', 'lo-fi'],
-                    'Jam Band': ['jam band', 'jam', 'grateful dead', 'phish'],
-                    'Jazz': ['jazz', 'bebop', 'swing', 'fusion', 'smooth jazz'],
-                    'Pop': ['pop', 'dance', 'disco'],
-                    'R&B': ['r&b', 'rnb', 'rhythm & blues', 'neo soul'],
-                    'Rock': ['rock', 'classic rock', 'hard rock', 'punk', 'metal', 'grunge'],
-                    'Soul': ['soul', 'motown', 'northern soul'],
-                    'World': ['world', 'reggae', 'latin', 'african', 'celtic', 'international']
-                };
-
-                const searchTerms = genreMapping[kallaxGenre] || [kallaxGenre.toLowerCase()];
-                
-                return record.genres.some(recordGenre => 
-                    searchTerms.some(term => 
-                        recordGenre.toLowerCase().includes(term) || 
-                        term.includes(recordGenre.toLowerCase())
-                    )
-                ) || record.styles.some(recordStyle => 
-                    searchTerms.some(term => 
-                        recordStyle.toLowerCase().includes(term) || 
-                        term.includes(recordStyle.toLowerCase())
-                    )
-                );
             }
 
             filterRecords(searchTerm = '', nestedSearchTerm = '') {
@@ -1800,6 +1954,68 @@
 
         document.getElementById('closeAlbumModal').addEventListener('click', () => {
             document.getElementById('albumModal').style.display = 'none';
+        });
+
+        document.getElementById('closeNewRecordModal').addEventListener('click', () => {
+            document.getElementById('newRecordModal').style.display = 'none';
+        });
+
+        // New record assignment handlers
+        document.addEventListener('change', (e) => {
+            if (e.target.matches('.genre-dropdown')) {
+                const recordId = e.target.getAttribute('data-record-id');
+                if (discogsCollection && discogsCollection.pendingAssignments) {
+                    discogsCollection.pendingAssignments[recordId] = e.target.value;
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.add-new-genre')) {
+                const recordId = e.target.getAttribute('data-record-id');
+                const dropdown = document.querySelector(`.genre-dropdown[data-record-id="${recordId}"]`);
+                const input = document.querySelector(`.new-genre-input[data-record-id="${recordId}"]`);
+                
+                dropdown.style.display = 'none';
+                e.target.style.display = 'none';
+                input.style.display = 'block';
+                input.focus();
+            }
+        });
+
+        document.addEventListener('keypress', (e) => {
+            if (e.target.matches('.new-genre-input') && e.key === 'Enter') {
+                const recordId = e.target.getAttribute('data-record-id');
+                const newGenre = e.target.value.trim();
+                
+                if (newGenre && discogsCollection && discogsCollection.pendingAssignments) {
+                    discogsCollection.pendingAssignments[recordId] = newGenre;
+                    
+                    // Add to dropdown for future use
+                    const dropdown = document.querySelector(`.genre-dropdown[data-record-id="${recordId}"]`);
+                    const option = document.createElement('option');
+                    option.value = newGenre;
+                    option.textContent = newGenre;
+                    option.selected = true;
+                    dropdown.appendChild(option);
+                    
+                    // Show dropdown again
+                    dropdown.style.display = 'block';
+                    e.target.style.display = 'none';
+                    document.querySelector(`.add-new-genre[data-record-id="${recordId}"]`).style.display = 'block';
+                }
+            }
+        });
+
+        document.getElementById('saveNewAssignments').addEventListener('click', () => {
+            if (discogsCollection && discogsCollection.pendingAssignments) {
+                discogsCollection.applyNewAssignments();
+                document.getElementById('newRecordModal').style.display = 'none';
+            }
+        });
+
+        document.getElementById('skipNewAssignments').addEventListener('click', () => {
+            document.getElementById('newRecordModal').style.display = 'none';
         });
 
         // Close modals when clicking outside
