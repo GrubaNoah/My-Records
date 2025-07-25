@@ -646,39 +646,68 @@
                 };
             }
 
-            async fetchCollection() {
-                if (DISCOGS_USERNAME === 'YOUR_USERNAME_HERE' || DISCOGS_TOKEN === 'YOUR_API_TOKEN_HERE') {
-                    throw new Error('Please configure your Discogs username and API token');
-                }
+async fetchCollection() {
+    if (DISCOGS_USERNAME === 'YOUR_USERNAME_HERE' || DISCOGS_TOKEN === 'YOUR_API_TOKEN_HERE') {
+        throw new Error('Please configure your Discogs username and API token');
+    }
 
-                let allItems = [];
-                let page = 1;
-                let totalPages = 1;
-                let hasMore = true;
+    let allItems = [];
+    let page = 1;
+    let totalPages = 1;
+    let hasMore = true;
 
-                // Show progress
-                const progressContainer = document.getElementById('progressContainer');
-                const progressFill = document.getElementById('progressFill');
-                const progressText = document.getElementById('progressText');
-                progressContainer.style.display = 'block';
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    progressContainer.style.display = 'block';
 
-                try {
-                    while (hasMore && page <= 10) { // Limit to 10 pages max for faster loading
-                        const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
-                        
-                        progressText.textContent = `Loading page ${page}${totalPages > 1 ? ` of ${Math.min(totalPages, 10)}` : ''}...`;
-                        
-                        const response = await fetch(url, { headers: this.headers });
-                        
-                        if (cardIndex < displayedRecords.length) {
-                        requestAnimationFrame(renderBatch);
-                    }
-                };
-                
-                if (cardsToAdd.length > 0) {
-                    renderBatch();
-                }
+    try {
+        while (hasMore && page <= 10) {
+            const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
+
+            progressText.textContent = `Loading page ${page}${totalPages > 1 ? ` of ${Math.min(totalPages, 10)}` : ''}...`;
+
+            const response = await fetch(url, { headers: this.headers });
+
+            if (!response.ok) {
+                if (response.status === 401) throw new Error('Invalid API token. Please check your token.');
+                if (response.status === 404) throw new Error('User not found. Please check your username.');
+                if (response.status === 429) throw new Error('Rate limit exceeded. Please try again later.');
+                throw new Error(`API Error: ${response.status}`);
             }
+
+            const data = await response.json();
+            allItems = allItems.concat(data.releases);
+
+            if (page === 1) {
+                totalPages = Math.min(data.pagination.pages, 10);
+            }
+
+            const progress = (page / totalPages) * 100;
+            progressFill.style.width = `${progress}%`;
+
+            hasMore = page < totalPages;
+            page++;
+
+            if (page === 2) {
+                this.processAndDisplayRecords(allItems.slice(0, 100));
+            }
+
+            if (hasMore) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+
+        progressContainer.style.display = 'none';
+        this.processAndDisplayRecords(allItems);
+        return allItems;
+
+    } catch (error) {
+        progressContainer.style.display = 'none';
+        throw error;
+    }
+}
+
 
             createRecordCard(record) {
                 const card = document.createElement('div');
