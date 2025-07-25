@@ -1,10 +1,56 @@
-.collection-grid {
+.genre-tag {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+        }
+
+        <!-- Recategorize Modal -->
+        <div class="modal" id="recategorizeModal">
+            <div class="modal-content">
+                <button class="close-btn" id="closeRecategorizeModal">×</button>
+                <h2>Recategorize Record</h2>
+                <div id="recategorizeContent">
+                    <div class="new-record-item">
+                        <div class="new-record-info">
+                            <div class="new-record-artist" id="recatArtist"></div>
+                            <div class="new-record-title" id="recatTitle"></div>
+                            <div class="predicted-genre">Current: <span id="currentGenre"></span></div>
+                        </div>
+                        <div class="genre-assignment">
+                            <select class="genre-dropdown" id="recategorizeDropdown">
+                                <option value="">Select Genre...</option>
+                                <option value="Bluegrass">Bluegrass</option>
+                                <option value="Electronic">Electronic</option>
+                                <option value="Folk">Folk</option>
+                                <option value="Funk">Funk</option>
+                                <option value="Hip Hop">Hip Hop</option>
+                                <option value="Indie">Indie</option>
+                                <option value="Jam Band">Jam Band</option>
+                                <option value="Jazz">Jazz</option>
+                                <option value="Pop">Pop</option>
+                                <option value="R&B">R&B</option>
+                                <option value="Rock">Rock</option>
+                                <option value="Soul">Soul</option>
+                                <option value="World">World</option>
+                                <option value="Unassigned">Unassigned</option>
+                            </select>
+                            <button class="add-new-genre" id="recatAddNew">+ New Genre</button>
+                            <input type="text" class="new-genre-input" id="recatNewInput" placeholder="Enter new genre..." style="display: none;">
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="sort-btn" id="saveRecategorize">Save Change</button>
+                        <button class="filter-btn" id="cancelRecategorize">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>        .collection-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 24px;
             margin-top: 30px;
             min-height: 400px;
-            align-items: start; /* Prevent vertical stretching */
+            align-items: start;
         }
 
         .collection-grid.compact {
@@ -549,10 +595,23 @@
             color: white;
         }
 
-        .genre-tag {
-            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+        .kallax-tag {
+            background: linear-gradient(135deg, #45b7d1, #96c93d);
             color: white;
             border: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .kallax-tag:hover {
+            background: linear-gradient(135deg, #5bc0de, #a6d93e);
+            transform: scale(1.05);
+        }
+
+        .kallax-tag::after {
+            content: "✏️";
+            margin-left: 5px;
+            font-size: 0.7rem;
         }
 
         .modal {
@@ -800,10 +859,6 @@
                 <div class="search-container">
                     <input type="text" class="search-box" placeholder="Search artists, albums, or genres..." id="searchBox">
                     <button class="search-clear" id="searchClear">×</button>
-                </div>
-                <div class="nested-search-container">
-                    <input type="text" class="nested-search" placeholder="Search within results..." id="nestedSearch">
-                    <button class="search-clear" id="nestedSearchClear" style="right: 10px;">×</button>
                 </div>
                 <div class="view-toggle">
                     <button class="view-btn active" data-view="normal">Grid</button>
@@ -1549,7 +1604,7 @@
                 filterLabel.textContent = 'Filter by Genre';
             }
 
-            filterRecords(searchTerm = '', nestedSearchTerm = '') {
+            filterRecords(searchTerm = '') {
                 let filtered = allRecords;
 
                 // Apply main genre filter using Kallax genres only
@@ -1571,20 +1626,7 @@
                 }
 
                 filteredRecords = filtered;
-
-                // Apply nested search
-                let displayed = filteredRecords;
-                if (nestedSearchTerm) {
-                    const term = nestedSearchTerm.toLowerCase();
-                    displayed = displayed.filter(record =>
-                        record.artist.toLowerCase().includes(term) ||
-                        record.title.toLowerCase().includes(term) ||
-                        record.genres.some(genre => genre.toLowerCase().includes(term)) ||
-                        record.styles.some(style => style.toLowerCase().includes(term))
-                    );
-                }
-
-                displayedRecords = displayed;
+                displayedRecords = filteredRecords;
                 this.updateStats();
                 this.sortRecords();
             }
@@ -1667,13 +1709,16 @@
                 const formatTag = record.formats ? 
                     `<span class="detail-tag" data-filter="${record.formats}">${record.formats}</span>` : '';
 
+                const kallaxTag = `<span class="detail-tag kallax-tag" data-record-id="${record.id}">${record.kallaxGenre}</span>`;
+
                 card.innerHTML = `
                     ${imageElement}
                     <div class="record-info">
                         <div class="artist">${record.artist}</div>
                         <div class="title">${record.title}</div>
-                        <div class="kallax-location">📍 ${record.kallax_location}</div>
+                        <div class="kallax-location">📍 ${record.kallax_location || 'Calculating...'}</div>
                         <div class="details">
+                            ${kallaxTag}
                             ${genreTags}
                             ${yearTag}
                             ${formatTag}
@@ -1761,41 +1806,19 @@
         // Search functionality
         document.getElementById('searchBox').addEventListener('input', (e) => {
             const searchTerm = e.target.value;
-            const nestedTerm = document.getElementById('nestedSearch').value;
             if (discogsCollection) {
-                discogsCollection.filterRecords(searchTerm, nestedTerm);
+                discogsCollection.filterRecords(searchTerm);
             }
             
             const clearBtn = document.getElementById('searchClear');
             clearBtn.classList.toggle('visible', searchTerm.length > 0);
         });
 
-        document.getElementById('nestedSearch').addEventListener('input', (e) => {
-            const nestedTerm = e.target.value;
-            const mainTerm = document.getElementById('searchBox').value;
-            if (discogsCollection) {
-                discogsCollection.filterRecords(mainTerm, nestedTerm);
-            }
-            
-            const clearBtn = document.getElementById('nestedSearchClear');
-            clearBtn.classList.toggle('visible', nestedTerm.length > 0);
-        });
-
         document.getElementById('searchClear').addEventListener('click', () => {
             document.getElementById('searchBox').value = '';
             document.getElementById('searchClear').classList.remove('visible');
-            const nestedTerm = document.getElementById('nestedSearch').value;
             if (discogsCollection) {
-                discogsCollection.filterRecords('', nestedTerm);
-            }
-        });
-
-        document.getElementById('nestedSearchClear').addEventListener('click', () => {
-            document.getElementById('nestedSearch').value = '';
-            document.getElementById('nestedSearchClear').classList.remove('visible');
-            const mainTerm = document.getElementById('searchBox').value;
-            if (discogsCollection) {
-                discogsCollection.filterRecords(mainTerm, '');
+                discogsCollection.filterRecords('');
             }
         });
 
@@ -1823,12 +1846,11 @@
                 
                 if (discogsCollection) {
                     const searchTerm = document.getElementById('searchBox').value;
-                    const nestedTerm = document.getElementById('nestedSearch').value;
-                    discogsCollection.filterRecords(searchTerm, nestedTerm);
+                    discogsCollection.filterRecords(searchTerm);
                 }
             }
 
-            // Handle clickable tags on cards
+            // Handle clickable tags on cards + recategorize
             if (e.target.matches('.detail-tag[data-filter]')) {
                 e.stopPropagation();
                 const filterValue = e.target.getAttribute('data-filter');
@@ -1836,9 +1858,15 @@
                 document.getElementById('searchClear').classList.add('visible');
                 
                 if (discogsCollection) {
-                    const nestedTerm = document.getElementById('nestedSearch').value;
-                    discogsCollection.filterRecords(filterValue, nestedTerm);
+                    discogsCollection.filterRecords(filterValue);
                 }
+            }
+
+            // Handle recategorize clicks
+            if (e.target.matches('.kallax-tag[data-record-id]')) {
+                e.stopPropagation();
+                const recordId = e.target.getAttribute('data-record-id');
+                showRecategorizeModal(recordId);
             }
         });
 
@@ -1873,15 +1901,75 @@
         document.getElementById('homeTitle').addEventListener('click', () => {
             currentGenre = 'all';
             document.getElementById('searchBox').value = '';
-            document.getElementById('nestedSearch').value = '';
             document.getElementById('searchClear').classList.remove('visible');
-            document.getElementById('nestedSearchClear').classList.remove('visible');
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
             
             if (discogsCollection) {
                 discogsCollection.updateGenreFilters();
                 discogsCollection.filterRecords();
+            }
+        });
+
+        // Recategorize modal functions
+        function showRecategorizeModal(recordId) {
+            const record = allRecords.find(r => r.id === recordId);
+            if (!record) return;
+
+            document.getElementById('recatArtist').textContent = record.artist;
+            document.getElementById('recatTitle').textContent = record.title;
+            document.getElementById('currentGenre').textContent = record.kallaxGenre;
+            document.getElementById('recategorizeDropdown').value = record.kallaxGenre;
+            
+            // Store record ID for later
+            document.getElementById('recategorizeModal').setAttribute('data-record-id', recordId);
+            document.getElementById('recategorizeModal').style.display = 'flex';
+        }
+
+        // Modal close handlers
+        document.getElementById('closeRecategorizeModal').addEventListener('click', () => {
+            document.getElementById('recategorizeModal').style.display = 'none';
+        });
+
+        document.getElementById('cancelRecategorize').addEventListener('click', () => {
+            document.getElementById('recategorizeModal').style.display = 'none';
+        });
+
+        document.getElementById('saveRecategorize').addEventListener('click', () => {
+            const recordId = document.getElementById('recategorizeModal').getAttribute('data-record-id');
+            const newGenre = document.getElementById('recategorizeDropdown').value || 
+                           document.getElementById('recatNewInput').value.trim();
+            
+            if (newGenre && discogsCollection) {
+                discogsCollection.recategorizeRecord(recordId, newGenre);
+                document.getElementById('recategorizeModal').style.display = 'none';
+            }
+        });
+
+        document.getElementById('recatAddNew').addEventListener('click', () => {
+            document.getElementById('recategorizeDropdown').style.display = 'none';
+            document.getElementById('recatAddNew').style.display = 'none';
+            document.getElementById('recatNewInput').style.display = 'block';
+            document.getElementById('recatNewInput').focus();
+        });
+
+        document.getElementById('recatNewInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const newGenre = e.target.value.trim();
+                if (newGenre) {
+                    // Add to dropdown
+                    const dropdown = document.getElementById('recategorizeDropdown');
+                    const option = document.createElement('option');
+                    option.value = newGenre;
+                    option.textContent = newGenre;
+                    option.selected = true;
+                    dropdown.appendChild(option);
+                    
+                    // Show dropdown again
+                    dropdown.style.display = 'block';
+                    e.target.style.display = 'none';
+                    document.getElementById('recatAddNew').style.display = 'block';
+                }
             }
         });
 
