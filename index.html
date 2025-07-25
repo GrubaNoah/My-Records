@@ -1057,19 +1057,27 @@
                 }
 
                 // Use requestAnimationFrame for smoother rendering
-                let cardIndex = 0;
-                const renderBatch = () => {
-                    const batchSize = 20; // Render 20 cards at a time
-                    const endIndex = Math.min(cardIndex + batchSize, displayedRecords.length);
-                    
-                    for (let i = cardIndex; i < endIndex; i++) {
-                        if (i >= existingCards) { // Only create new cards
-                            const card = this.createRecordCard(displayedRecords[i]);
-                            card.style.animationDelay = `${(i - existingCards) * 0.1}s`;
-                            grid.appendChild(card);
-                        }
-                    }
-                    
-                    cardIndex = endIndex;
-                    
-                    if
+               // Use requestAnimationFrame for smoother rendering
+let cardIndex = 0;
+const renderBatch = () => {
+    const batchSize = 20;
+    const endIndex = Math.min(cardIndex + batchSize, displayedRecords.length);
+
+    for (let i = cardIndex; i < endIndex; i++) {
+        if (i >= existingCards) {
+            const card = this.createRecordCard(displayedRecords[i]);
+            card.style.animationDelay = `${(i - existingCards) * 0.1}s`;
+            grid.appendChild(card);
+        }
+    }
+
+    cardIndex = endIndex;
+
+    if (cardIndex < displayedRecords.length) {
+        requestAnimationFrame(renderBatch);
+    }
+};
+
+if (cardsToAdd.length > 0) {
+    renderBatch();
+}
