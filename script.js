@@ -41,7 +41,7 @@ class DiscogsCollection {
         this.genreLearningData = {};
         this.recordsPerCube = 60; // Default capacity
         this.positionCalculationNeeded = false;
-        this.manualAssignments = {}; // Track manual genre assignments
+        this.manualAssignments = this.loadManualAssignments(); // Load from localStorage
     }
 
     async fetchCollection() {
@@ -116,6 +116,31 @@ class DiscogsCollection {
         } catch (error) {
             progressContainer.style.display = 'none';
             throw error;
+        }
+    }
+
+    // Load manual assignments from localStorage (survives page refresh)
+    loadManualAssignments() {
+        try {
+            const saved = localStorage.getItem('vinylVault_manualAssignments');
+            if (saved) {
+                const assignments = JSON.parse(saved);
+                console.log(`✅ Loaded ${Object.keys(assignments).length} manual assignments from storage`);
+                return assignments;
+            }
+        } catch (error) {
+            console.error('❌ Error loading manual assignments:', error);
+        }
+        return {};
+    }
+
+    // Save manual assignments to localStorage (permanent storage)
+    saveManualAssignments() {
+        try {
+            localStorage.setItem('vinylVault_manualAssignments', JSON.stringify(this.manualAssignments));
+            console.log(`💾 Saved ${Object.keys(this.manualAssignments).length} manual assignments to storage`);
+        } catch (error) {
+            console.error('❌ Error saving manual assignments:', error);
         }
     }
 
@@ -235,14 +260,20 @@ class DiscogsCollection {
         const artist = basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist';
         const title = basic.title;
         
-        // Check for manual assignment FIRST (overrides everything)
+        // Use ORIGINAL release year, not pressing year
+        let originalYear = 'Unknown';
+        if (basic.year && basic.year !== 0) {
+            originalYear = basic.year.toString();
+        }
+        
+        // Check for manual assignment FIRST (highest priority - survives refresh)
         const recordKey = `${artist}|||${title}`;
         if (this.manualAssignments[recordKey]) {
             return {
                 id: basic.id,
                 title: title,
                 artist: artist,
-                year: basic.year || 'Unknown',
+                year: originalYear,
                 thumb: basic.thumb || '',
                 cover_image: basic.cover_image || basic.thumb || '',
                 formats: basic.formats ? basic.formats.map(f => f.name).join(', ') : '',
@@ -256,7 +287,7 @@ class DiscogsCollection {
             };
         }
         
-        // Quick CSV lookup (only if no manual assignment)
+        // CSV lookup (secondary priority)
         const matchingKey = this.createMatchingKey(artist, title);
         const csvMatch = this.csvRecords[matchingKey];
         
@@ -264,6 +295,7 @@ class DiscogsCollection {
         if (csvMatch) {
             assignedGenre = this.mapCSVGenreToKallax(csvMatch.genre);
         } else {
+            // Auto-detection (lowest priority)
             assignedGenre = this.assignGenreFromDiscogs(genres, styles, artist);
         }
         
@@ -271,7 +303,7 @@ class DiscogsCollection {
             id: basic.id,
             title: title,
             artist: artist,
-            year: basic.year || 'Unknown',
+            year: originalYear,
             thumb: basic.thumb || '',
             cover_image: basic.cover_image || basic.thumb || '',
             formats: basic.formats ? basic.formats.map(f => f.name).join(', ') : '',
@@ -281,7 +313,7 @@ class DiscogsCollection {
             kallaxGenre: assignedGenre,
             fromCSV: !!csvMatch,
             manuallyAssigned: false,
-            kallax_location: 'Calculating...' // Initialize with placeholder
+            kallax_location: 'Calculating...'
         };
     }
 
@@ -614,11 +646,11 @@ class DiscogsCollection {
             `<div class="no-image">🎵</div>`;
 
         const genreTags = record.genres.slice(0, 2).map(genre => 
-            `<span class="detail-tag genre-tag" data-filter="${genre}">${genre}</span>`
+            `<span class="detail-tag genre-tag clickable-tag" data-filter-genre="${genre}">${genre}</span>`
         ).join('');
 
         const yearTag = record.year !== 'Unknown' ? 
-            `<span class="detail-tag" data-filter="${record.year}">${record.year}</span>` : '';
+            `<span class="detail-tag clickable-tag" data-filter-year="${record.year}">${record.year}</span>` : '';
 
         const formatTag = record.formats ? 
             `<span class="detail-tag" data-filter="${record.formats}">${record.formats}</span>` : '';
@@ -861,7 +893,7 @@ class DiscogsCollection {
         this.pendingAssignments = {};
     }
 
-    // FIXED: Recategorize function that properly saves manual assignments
+    // FIXED: Recategorize function with permanent localStorage persistence
     recategorizeRecord(recordId, newGenre) {
         console.log(`🔄 Recategorizing record ${recordId} to ${newGenre}`);
         
@@ -878,9 +910,10 @@ class DiscogsCollection {
         record.kallaxGenre = newGenre;
         record.manuallyAssigned = true;
         
-        // Store manual assignment to prevent CSV override
+        // Store manual assignment permanently (survives page refresh)
         const recordKey = `${record.artist}|||${record.title}`;
         this.manualAssignments[recordKey] = newGenre;
+        this.saveManualAssignments(); // Save to localStorage immediately
         
         // Learn from this manual correction
         if (!this.genreLearningData[record.artist]) {
@@ -890,7 +923,7 @@ class DiscogsCollection {
             (this.genreLearningData[record.artist][newGenre] || 0) + 1;
         
         console.log(`✅ Recategorized: ${record.artist} - ${record.title} from ${oldGenre} → ${newGenre}`);
-        console.log(`💾 Saved manual assignment: ${recordKey} → ${newGenre}`);
+        console.log(`💾 PERMANENTLY saved manual assignment: ${recordKey} → ${newGenre}`);
         
         // Only recalculate positions for affected genres (much faster!)
         this.updatePositionsForGenres([oldGenre, newGenre]);
@@ -1037,7 +1070,50 @@ document.addEventListener('click', (e) => {
         }
     }
 
-    // Handle clickable tags on cards + recategorize
+    // Handle clickable year tags - clear search and filter by year
+    if (e.target.matches('.clickable-tag[data-filter-year]')) {
+        e.stopPropagation();
+        const year = e.target.getAttribute('data-filter-year');
+        
+        // Clear search box and show all albums from that year
+        document.getElementById('searchBox').value = '';
+        document.getElementById('searchClear').classList.remove('visible');
+        
+        if (discogsCollection) {
+            // Filter to show all records from that year
+            filteredRecords = allRecords.filter(record => record.year === year);
+            displayedRecords = filteredRecords;
+            discogsCollection.updateStats();
+            discogsCollection.sortRecords();
+            
+            console.log(`📅 Showing all albums from ${year}: ${filteredRecords.length} records`);
+        }
+    }
+
+    // Handle clickable genre tags - clear search and filter by that Discogs genre
+    if (e.target.matches('.clickable-tag[data-filter-genre]')) {
+        e.stopPropagation();
+        const genre = e.target.getAttribute('data-filter-genre');
+        
+        // Clear search box and show all albums with that genre
+        document.getElementById('searchBox').value = '';
+        document.getElementById('searchClear').classList.remove('visible');
+        
+        if (discogsCollection) {
+            // Filter to show all records with that Discogs genre/style
+            filteredRecords = allRecords.filter(record =>
+                record.genres.some(g => g.toLowerCase() === genre.toLowerCase()) ||
+                record.styles.some(s => s.toLowerCase() === genre.toLowerCase())
+            );
+            displayedRecords = filteredRecords;
+            discogsCollection.updateStats();
+            discogsCollection.sortRecords();
+            
+            console.log(`🎵 Showing all albums with genre "${genre}": ${filteredRecords.length} records`);
+        }
+    }
+
+    // Handle other clickable tags (formats, etc.) - old behavior
     if (e.target.matches('.detail-tag[data-filter]')) {
         e.stopPropagation();
         const filterValue = e.target.getAttribute('data-filter');
