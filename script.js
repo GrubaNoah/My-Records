@@ -38,6 +38,7 @@ class DiscogsCollection {
         this.csvRecords = {};
         this.genreLearningData = {};
         this.recordsPerCube = 60; // Default capacity
+        this.positionCalculationNeeded = false;
     }
 
     async fetchCollection() {
@@ -256,7 +257,8 @@ class DiscogsCollection {
             genres: genres,
             styles: styles,
             kallaxGenre: assignedGenre,
-            fromCSV: !!csvMatch
+            fromCSV: !!csvMatch,
+            kallax_location: 'Calculating...' // Initialize with placeholder
         };
     }
 
@@ -412,8 +414,8 @@ class DiscogsCollection {
         // Store for use in location algorithm
         this.recordsPerCube = recordsPerCube;
         
-        // Update all record locations
-        this.updateAllKallaxLocations();
+        // Update all record locations - OPTIMIZED VERSION
+        this.updateAllKallaxLocationsOptimized();
     }
 
     initializeUI() {
@@ -616,8 +618,34 @@ class DiscogsCollection {
         return card;
     }
 
-    updateAllKallaxLocations() {
-        // Noah's exact Kallax genre layout - simplified, no sub-genres
+    // OPTIMIZED VERSION - Much faster placement calculation
+    updateAllKallaxLocationsOptimized() {
+        console.log('🚀 Starting optimized position calculation...');
+        const startTime = performance.now();
+        
+        // Group records by genre first
+        const recordsByGenre = {};
+        allRecords.forEach(record => {
+            const genre = record.kallaxGenre;
+            if (!recordsByGenre[genre]) {
+                recordsByGenre[genre] = [];
+            }
+            recordsByGenre[genre].push(record);
+        });
+
+        // Sort each genre group once
+        Object.keys(recordsByGenre).forEach(genre => {
+            recordsByGenre[genre].sort((a, b) => {
+                const artistCompare = a.artist.localeCompare(b.artist);
+                if (artistCompare !== 0) return artistCompare;
+                
+                const yearA = a.year === 'Unknown' ? 9999 : parseInt(a.year);
+                const yearB = b.year === 'Unknown' ? 9999 : parseInt(b.year);
+                return yearA - yearB;
+            });
+        });
+
+        // Define layout once
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
             { genre: 'Electronic', cubes: ['A1', 'B1'] },
@@ -634,23 +662,11 @@ class DiscogsCollection {
             { genre: 'World', cubes: ['D4'] }
         ];
 
-        // Calculate positions for each cube and genre section
-        this.calculateAllPositions(genreLayout);
-    }
-
-    calculateAllPositions(genreLayout) {
-        console.log('Calculating Kallax positions...');
-        
-        // Simple position calculation
+        // Process each genre
         genreLayout.forEach(layout => {
-            const genreRecords = allRecords.filter(record => 
-                record.kallaxGenre === layout.genre
-            );
+            const genreRecords = recordsByGenre[layout.genre] || [];
+            if (genreRecords.length === 0) return;
 
-            // Quick sort
-            genreRecords.sort((a, b) => a.artist.localeCompare(b.artist));
-
-            // Assign positions
             let recordIndex = 0;
             layout.cubes.forEach(cube => {
                 const recordsForThisCube = genreRecords.slice(
@@ -667,7 +683,16 @@ class DiscogsCollection {
             });
         });
 
-        console.log('✅ Positions calculated');
+        const endTime = performance.now();
+        console.log(`✅ Position calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
+        
+        // Mark that calculation is done
+        this.positionCalculationNeeded = false;
+        
+        // Refresh display if needed
+        if (displayedRecords.length > 0) {
+            this.renderRecords();
+        }
     }
 
     async showAlbumDetails(releaseId) {
@@ -789,7 +814,7 @@ class DiscogsCollection {
 
     applyNewAssignments() {
         Object.entries(this.pendingAssignments).forEach(([recordId, assignedGenre]) => {
-            const record = allRecords.find(r => r.id === recordId);
+            const record = allRecords.find(r => r.id == recordId);
             if (record) {
                 record.kallaxGenre = assignedGenre;
                 
@@ -805,38 +830,51 @@ class DiscogsCollection {
         });
         
         // Update everything with new assignments
-        this.updateAllKallaxLocations();
+        this.updateAllKallaxLocationsOptimized();
         this.updateGenreFilters();
         this.filterRecords();
         
         this.pendingAssignments = {};
     }
 
+    // FIXED: Recategorize function with proper ID handling and optimization
     recategorizeRecord(recordId, newGenre) {
-        const record = allRecords.find(r => r.id === recordId);
-        if (record) {
-            const oldGenre = record.kallaxGenre;
-            record.kallaxGenre = newGenre;
-            
-            // Learn from this manual correction
-            if (!this.genreLearningData[record.artist]) {
-                this.genreLearningData[record.artist] = {};
-            }
-            this.genreLearningData[record.artist][newGenre] = 
-                (this.genreLearningData[record.artist][newGenre] || 0) + 1;
-            
-            console.log(`Recategorized: ${record.artist} - ${record.title} from ${oldGenre} → ${newGenre}`);
-            
-            // Only recalculate positions for affected genres (much faster!)
-            this.updatePositionsForGenres([oldGenre, newGenre]);
-            
-            // Update display
-            this.updateGenreFilters();
-            this.filterRecords();
+        console.log(`🔄 Recategorizing record ${recordId} to ${newGenre}`);
+        
+        // Convert recordId to number for comparison
+        const numericRecordId = parseInt(recordId);
+        const record = allRecords.find(r => parseInt(r.id) === numericRecordId);
+        
+        if (!record) {
+            console.error(`❌ Record not found: ${recordId}`);
+            return;
         }
+        
+        const oldGenre = record.kallaxGenre;
+        record.kallaxGenre = newGenre;
+        
+        // Learn from this manual correction
+        if (!this.genreLearningData[record.artist]) {
+            this.genreLearningData[record.artist] = {};
+        }
+        this.genreLearningData[record.artist][newGenre] = 
+            (this.genreLearningData[record.artist][newGenre] || 0) + 1;
+        
+        console.log(`✅ Recategorized: ${record.artist} - ${record.title} from ${oldGenre} → ${newGenre}`);
+        
+        // Only recalculate positions for affected genres (much faster!)
+        this.updatePositionsForGenres([oldGenre, newGenre]);
+        
+        // Update display
+        this.updateGenreFilters();
+        this.filterRecords();
     }
 
+    // OPTIMIZED: Only recalculate specific genres instead of entire collection
     updatePositionsForGenres(affectedGenres) {
+        console.log(`🔄 Updating positions for genres: ${affectedGenres.join(', ')}`);
+        const startTime = performance.now();
+        
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
             { genre: 'Electronic', cubes: ['A1', 'B1'] },
@@ -883,7 +921,7 @@ class DiscogsCollection {
                 );
                 
                 recordsForThisCube.forEach((record, index) => {
-                    const position = (recordIndex % this.recordsPerCube) + index + 1;
+                    const position = index + 1;
                     record.kallax_location = `${cube}, ${position}`;
                 });
                 
@@ -891,7 +929,11 @@ class DiscogsCollection {
             });
         });
 
-        console.log(`Updated positions for genres: ${affectedGenres.join(', ')}`);
+        const endTime = performance.now();
+        console.log(`✅ Updated positions for ${affectedGenres.length} genres in ${(endTime - startTime).toFixed(2)}ms`);
+        
+        // Refresh the display
+        this.renderRecords();
     }
 }
 
@@ -975,10 +1017,11 @@ document.addEventListener('click', (e) => {
         }
     }
 
-    // Handle recategorize clicks
+    // FIXED: Handle recategorize clicks with proper ID handling
     if (e.target.matches('.kallax-tag[data-record-id]')) {
         e.stopPropagation();
         const recordId = e.target.getAttribute('data-record-id');
+        console.log(`🔄 Opening recategorize modal for record ${recordId}`);
         showRecategorizeModal(recordId);
     }
 });
@@ -1106,9 +1149,20 @@ function showGenreModal() {
     modal.style.display = 'flex';
 }
 
+// FIXED: Recategorize modal with proper record finding
 function showRecategorizeModal(recordId) {
-    const record = allRecords.find(r => r.id === recordId);
-    if (!record) return;
+    console.log(`🔄 Showing recategorize modal for record ${recordId}`);
+    
+    // Convert to number for comparison
+    const numericRecordId = parseInt(recordId);
+    const record = allRecords.find(r => parseInt(r.id) === numericRecordId);
+    
+    if (!record) {
+        console.error(`❌ Record not found: ${recordId}`);
+        return;
+    }
+
+    console.log(`✅ Found record: ${record.artist} - ${record.title} (${record.kallaxGenre})`);
 
     document.getElementById('recatArtist').textContent = record.artist;
     document.getElementById('recatTitle').textContent = record.title;
@@ -1238,7 +1292,7 @@ document.getElementById('skipNewAssignments').addEventListener('click', () => {
     document.getElementById('newRecordModal').style.display = 'none';
 });
 
-// Recategorize modal handlers
+// FIXED: Recategorize modal handlers with proper functionality
 document.getElementById('cancelRecategorize').addEventListener('click', () => {
     document.getElementById('recategorizeModal').style.display = 'none';
 });
@@ -1248,9 +1302,14 @@ document.getElementById('saveRecategorize').addEventListener('click', () => {
     const newGenre = document.getElementById('recategorizeDropdown').value || 
                    document.getElementById('recatNewInput').value.trim();
     
+    console.log(`💾 Saving recategorization: Record ${recordId} → ${newGenre}`);
+    
     if (newGenre && discogsCollection) {
         discogsCollection.recategorizeRecord(recordId, newGenre);
         document.getElementById('recategorizeModal').style.display = 'none';
+        console.log(`✅ Recategorization saved successfully`);
+    } else {
+        console.error(`❌ Cannot save: newGenre="${newGenre}", discogsCollection exists: ${!!discogsCollection}`);
     }
 });
 
