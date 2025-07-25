@@ -909,14 +909,13 @@
         
         // ===== END CONFIGURATION =====
 
+        // Remove all sub-genre variables and logic
         let allRecords = [];
         let filteredRecords = [];
         let displayedRecords = [];
         let currentView = 'normal';
         let currentGenre = 'all';
         let currentSort = 'artist';
-        let isSubGenreMode = false;
-        let parentGenre = null;
 
         class DiscogsCollection {
             constructor() {
@@ -1112,32 +1111,21 @@
             }
 
             updateAllKallaxLocations() {
-                // Noah's actual genre layout based on his Kallax organization
+                // Noah's exact Kallax genre layout - simplified, no sub-genres
                 const genreLayout = [
-                    { genres: ['Bluegrass'], cubes: ['A1'], sections: [{ cube: 'A1', genres: ['Bluegrass'] }] },
-                    { genres: ['Electronic'], cubes: ['A1', 'B1'], sections: [
-                        { cube: 'A1', genres: ['Electronic'] },
-                        { cube: 'B1', genres: ['Electronic'] }
-                    ]},
-                    { genres: ['Folk'], cubes: ['B1'], sections: [{ cube: 'B1', genres: ['Folk'] }] },
-                    { genres: ['Funk'], cubes: ['B1'], sections: [{ cube: 'B1', genres: ['Funk'] }] },
-                    { genres: ['Hip Hop', 'Hip-Hop', 'Rap'], cubes: ['B2', 'C2', 'C3', 'C4'], sections: [
-                        { cube: 'B2', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
-                        { cube: 'C2', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
-                        { cube: 'C3', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
-                        { cube: 'C4', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] }
-                    ]},
-                    { genres: ['Indie'], cubes: ['C4'], sections: [{ cube: 'C4', genres: ['Indie'] }] },
-                    { genres: ['Jam Band'], cubes: ['D1'], sections: [{ cube: 'D1', genres: ['Jam Band'] }] },
-                    { genres: ['Jazz'], cubes: ['D1', 'D2'], sections: [
-                        { cube: 'D1', genres: ['Jazz'] },
-                        { cube: 'D2', genres: ['Jazz'] }
-                    ]},
-                    { genres: ['Pop'], cubes: ['D2'], sections: [{ cube: 'D2', genres: ['Pop'] }] },
-                    { genres: ['R&B', 'RnB', 'Rhythm & Blues'], cubes: ['D2'], sections: [{ cube: 'D2', genres: ['R&B', 'RnB', 'Rhythm & Blues'] }] },
-                    { genres: ['Rock'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['Rock'] }] },
-                    { genres: ['Soul'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['Soul'] }] },
-                    { genres: ['World'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['World'] }] }
+                    { genre: 'Bluegrass', cubes: ['A1'] },
+                    { genre: 'Electronic', cubes: ['A1', 'B1'] },
+                    { genre: 'Folk', cubes: ['B1'] },
+                    { genre: 'Funk', cubes: ['B1'] },
+                    { genre: 'Hip Hop', cubes: ['B2', 'C2', 'C3', 'C4'] },
+                    { genre: 'Indie', cubes: ['C4'] },
+                    { genre: 'Jam Band', cubes: ['D1'] },
+                    { genre: 'Jazz', cubes: ['D1', 'D2'] },
+                    { genre: 'Pop', cubes: ['D2'] },
+                    { genre: 'R&B', cubes: ['D2'] },
+                    { genre: 'Rock', cubes: ['D4'] },
+                    { genre: 'Soul', cubes: ['D4'] },
+                    { genre: 'World', cubes: ['D4'] }
                 ];
 
                 // Calculate positions for each cube and genre section
@@ -1150,26 +1138,21 @@
 
                 // Initialize cube arrangement
                 genreLayout.forEach(layout => {
-                    layout.sections.forEach(section => {
-                        if (!cubeArrangement[section.cube]) {
-                            cubeArrangement[section.cube] = [];
+                    layout.cubes.forEach(cube => {
+                        if (!cubeArrangement[cube]) {
+                            cubeArrangement[cube] = [];
                         }
                     });
                 });
 
-                // Sort and place records into cube sections
+                // Process each genre and place records
                 genreLayout.forEach(layout => {
-                    // Get all records for this genre group
+                    // Get all records for this Kallax genre
                     const genreRecords = allRecords.filter(record => 
-                        record.genres.some(recordGenre => 
-                            layout.genres.some(layoutGenre =>
-                                recordGenre.toLowerCase().includes(layoutGenre.toLowerCase()) ||
-                                layoutGenre.toLowerCase().includes(recordGenre.toLowerCase())
-                            )
-                        )
+                        this.recordMatchesKallaxGenre(record, layout.genre)
                     );
 
-                    // Sort: alphabetically by artist, then by release date
+                    // Sort: alphabetically by artist, then by release year
                     genreRecords.sort((a, b) => {
                         const artistCompare = a.artist.localeCompare(b.artist);
                         if (artistCompare !== 0) return artistCompare;
@@ -1180,18 +1163,18 @@
                         return yearA - yearB;
                     });
 
-                    // Distribute records across sections for this genre
+                    // Distribute records across cubes for this genre
                     let recordIndex = 0;
-                    layout.sections.forEach(section => {
-                        const recordsForThisSection = genreRecords.slice(
+                    layout.cubes.forEach(cube => {
+                        const recordsForThisCube = genreRecords.slice(
                             recordIndex, 
                             recordIndex + this.recordsPerCube
                         );
                         
-                        cubeArrangement[section.cube] = cubeArrangement[section.cube].concat(
-                            recordsForThisSection.map(record => ({
+                        cubeArrangement[cube] = cubeArrangement[cube].concat(
+                            recordsForThisCube.map(record => ({
                                 ...record,
-                                genreSection: layout.genres[0] // Primary genre for this record
+                                kallaxGenre: layout.genre
                             }))
                         );
                         
@@ -1199,7 +1182,7 @@
                     });
                 });
 
-                // Calculate final positions
+                // Calculate final positions within each cube
                 Object.keys(cubeArrangement).forEach(cube => {
                     cubeArrangement[cube].forEach((record, index) => {
                         const position = index + 1; // 1-based positioning
@@ -1211,13 +1194,10 @@
                 });
 
                 console.log('Updated all Kallax locations with precise positions');
-                console.log('Cube arrangement:', cubeArrangement);
-            }
-
-            calculateRecordLocation(record, genreLayout) {
-                // This method is now handled by calculateAllPositions
-                // but keeping it for compatibility
-                return record.kallax_location || 'Unknown';
+                console.log('Cube arrangement summary:');
+                Object.keys(cubeArrangement).forEach(cube => {
+                    console.log(`${cube}: ${cubeArrangement[cube].length} records`);
+                });
             }
 
             async fetchAlbumDetails(releaseId) {
@@ -1316,62 +1296,89 @@
             }
 
             updateGenreFilters() {
+                // Use only Noah's specific Kallax genres - no sub-genres
+                const kallaxGenres = [
+                    'Bluegrass', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
+                    'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'World'
+                ];
+                
                 const genreFilters = document.getElementById('genreFilters');
-                const currentRecords = currentGenre === 'all' ? allRecords : filteredRecords;
                 const genreCounts = {};
 
-                currentRecords.forEach(record => {
-                    if (isSubGenreMode) {
-                        record.styles.forEach(style => {
-                            genreCounts[style] = (genreCounts[style] || 0) + 1;
-                        });
-                    } else {
-                        record.genres.forEach(genre => {
-                            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-                        });
+                // Count records for each Kallax genre
+                kallaxGenres.forEach(kallaxGenre => {
+                    const count = allRecords.filter(record => 
+                        this.recordMatchesKallaxGenre(record, kallaxGenre)
+                    ).length;
+                    
+                    if (count > 0) {
+                        genreCounts[kallaxGenre] = count;
                     }
                 });
 
-                const sortedGenres = Object.entries(genreCounts)
-                    .sort(([,a], [,b]) => b - a)
-                    .slice(0, 15);
-
-                const allText = isSubGenreMode ? 'All Sub-genres' : 'All Genres';
+                // Create filter buttons for genres that have records
                 genreFilters.innerHTML = `
                     <button class="filter-btn ${currentGenre === 'all' ? 'active' : ''}" data-genre="all">
-                        ${allText}
+                        All Genres
                     </button>
                 `;
 
-                sortedGenres.forEach(([genre, count]) => {
-                    const button = document.createElement('button');
-                    button.className = `filter-btn ${currentGenre === genre ? 'active' : ''}`;
-                    button.setAttribute('data-genre', genre);
-                    button.textContent = `${genre} (${count})`;
-                    genreFilters.appendChild(button);
-                });
+                Object.entries(genreCounts)
+                    .sort(([,a], [,b]) => b - a) // Sort by count
+                    .forEach(([genre, count]) => {
+                        const button = document.createElement('button');
+                        button.className = `filter-btn ${currentGenre === genre ? 'active' : ''}`;
+                        button.setAttribute('data-genre', genre);
+                        button.textContent = `${genre} (${count})`;
+                        genreFilters.appendChild(button);
+                    });
 
-                // Update filter label
+                // Always show as "Filter by Genre"
                 const filterLabel = document.getElementById('filterLabel');
-                filterLabel.textContent = isSubGenreMode ? 'Filter by Sub-genre' : 'Filter by Genre';
+                filterLabel.textContent = 'Filter by Genre';
+            }
+
+            recordMatchesKallaxGenre(record, kallaxGenre) {
+                // Map Discogs genres to Noah's Kallax genres
+                const genreMapping = {
+                    'Bluegrass': ['bluegrass'],
+                    'Electronic': ['electronic', 'techno', 'house', 'ambient', 'idm', 'drum n bass', 'dubstep'],
+                    'Folk': ['folk', 'country', 'americana', 'singer/songwriter'],
+                    'Funk': ['funk'],
+                    'Hip Hop': ['hip hop', 'hip-hop', 'rap', 'trap'],
+                    'Indie': ['indie', 'alternative', 'lo-fi'],
+                    'Jam Band': ['jam band', 'jam', 'grateful dead', 'phish'],
+                    'Jazz': ['jazz', 'bebop', 'swing', 'fusion', 'smooth jazz'],
+                    'Pop': ['pop', 'dance', 'disco'],
+                    'R&B': ['r&b', 'rnb', 'rhythm & blues', 'neo soul'],
+                    'Rock': ['rock', 'classic rock', 'hard rock', 'punk', 'metal', 'grunge'],
+                    'Soul': ['soul', 'motown', 'northern soul'],
+                    'World': ['world', 'reggae', 'latin', 'african', 'celtic', 'international']
+                };
+
+                const searchTerms = genreMapping[kallaxGenre] || [kallaxGenre.toLowerCase()];
+                
+                return record.genres.some(recordGenre => 
+                    searchTerms.some(term => 
+                        recordGenre.toLowerCase().includes(term) || 
+                        term.includes(recordGenre.toLowerCase())
+                    )
+                ) || record.styles.some(recordStyle => 
+                    searchTerms.some(term => 
+                        recordStyle.toLowerCase().includes(term) || 
+                        term.includes(recordStyle.toLowerCase())
+                    )
+                );
             }
 
             filterRecords(searchTerm = '', nestedSearchTerm = '') {
                 let filtered = allRecords;
 
-                // Apply main genre/sub-genre filter
+                // Apply main genre filter using Kallax genres only
                 if (currentGenre !== 'all') {
-                    filtered = filtered.filter(record => {
-                        if (isSubGenreMode) {
-                            return record.styles.some(style => 
-                                style.toLowerCase().includes(currentGenre.toLowerCase())
-                            );
-                        } else {
-                            return record.genres.some(genre => 
-                                genre.toLowerCase().includes(currentGenre.toLowerCase())
-                            );
-                        }
-                    });
+                    filtered = filtered.filter(record => 
+                        this.recordMatchesKallaxGenre(record, currentGenre)
+                    );
                 }
 
                 // Apply main search
@@ -1632,12 +1639,6 @@
             if (e.target.matches('.filter-btn')) {
                 const newGenre = e.target.dataset.genre;
                 
-                // Check if switching from all genres to specific genre (enter sub-genre mode)
-                if (currentGenre === 'all' && newGenre !== 'all') {
-                    isSubGenreMode = true;
-                    parentGenre = newGenre;
-                }
-                
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 currentGenre = newGenre;
@@ -1645,7 +1646,6 @@
                 if (discogsCollection) {
                     const searchTerm = document.getElementById('searchBox').value;
                     const nestedTerm = document.getElementById('nestedSearch').value;
-                    discogsCollection.updateGenreFilters();
                     discogsCollection.filterRecords(searchTerm, nestedTerm);
                 }
             }
@@ -1694,8 +1694,6 @@
         // Home title click - reset everything
         document.getElementById('homeTitle').addEventListener('click', () => {
             currentGenre = 'all';
-            isSubGenreMode = false;
-            parentGenre = null;
             document.getElementById('searchBox').value = '';
             document.getElementById('nestedSearch').value = '';
             document.getElementById('searchClear').classList.remove('visible');
