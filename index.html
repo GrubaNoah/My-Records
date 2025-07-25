@@ -1037,9 +1037,19 @@
             }
 
             createMatchingKey(artist, title) {
-                // Clean and normalize for matching
-                const cleanArtist = artist.toLowerCase().replace(/[^\w\s]/g, '').trim();
-                const cleanTitle = title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+                // More aggressive cleaning for better matching
+                const cleanArtist = artist
+                    .toLowerCase()
+                    .replace(/[^\w\s]/g, '') // Remove all punctuation
+                    .replace(/\s+/g, ' ') // Normalize spaces
+                    .trim();
+                    
+                const cleanTitle = title
+                    .toLowerCase()
+                    .replace(/[^\w\s]/g, '') // Remove all punctuation
+                    .replace(/\s+/g, ' ') // Normalize spaces
+                    .trim();
+                    
                 return `${cleanArtist}|||${cleanTitle}`;
             }
 
@@ -1191,7 +1201,7 @@
                 genreLayout.forEach(layout => {
                     // Get all records for this Kallax genre
                     const genreRecords = allRecords.filter(record => 
-                        this.recordMatchesKallaxGenre(record, layout.genre)
+                        record.kallaxGenre === layout.genre
                     );
 
                     // Sort: alphabetically by artist, then by release year
@@ -1288,6 +1298,13 @@
                 
                 const csvMatch = this.csvRecords ? this.csvRecords[matchingKey] : null;
                 
+                // Debug matching
+                if (!csvMatch && this.csvRecords) {
+                    console.log(`No CSV match for: "${matchingKey}" (${basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown'} - ${basic.title})`);
+                } else if (csvMatch) {
+                    console.log(`CSV match found: ${csvMatch.artist} - ${csvMatch.title} → ${csvMatch.genre}`);
+                }
+                
                 let assignedGenre = 'Unassigned';
                 if (csvMatch) {
                     // Use CSV genre assignment
@@ -1366,6 +1383,13 @@
                     
                     console.log(`Loaded ${Object.keys(this.csvRecords).length} records from CSV`);
                     console.log(`Learning patterns from ${Object.keys(this.genreLearningData).length} artists`);
+                    
+                    // Debug: Show some matching examples
+                    console.log('Sample CSV matching keys:');
+                    Object.keys(this.csvRecords).slice(0, 5).forEach(key => {
+                        const record = this.csvRecords[key];
+                        console.log(`"${key}" → ${record.genre} (${record.artist} - ${record.title})`);
+                    });
                     
                 } catch (error) {
                     console.error('Could not load CSV data:', error);
@@ -1531,7 +1555,7 @@
                 // Apply main genre filter using Kallax genres only
                 if (currentGenre !== 'all') {
                     filtered = filtered.filter(record => 
-                        this.recordMatchesKallaxGenre(record, currentGenre)
+                        record.kallaxGenre === currentGenre
                     );
                 }
 
