@@ -174,6 +174,32 @@
             display: flex;
         }
 
+        .nested-search-container {
+            position: relative;
+            flex: 0 0 200px;
+        }
+
+        .nested-search {
+            width: 100%;
+            padding: 12px 40px 12px 16px;
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .nested-search::placeholder {
+            color: rgba(78, 205, 196, 0.7);
+        }
+
+        .nested-search:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+        }
+
         .view-toggle {
             display: flex;
             background: rgba(255,255,255,0.05);
@@ -210,6 +236,29 @@
             color: #ccc;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .expand-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            color: #4ecdc4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .expand-btn:hover {
+            background: rgba(78, 205, 196, 0.2);
+            border-color: #4ecdc4;
         }
 
         .filter-buttons {
@@ -295,6 +344,16 @@
             border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s ease;
+        }
+
+        .stats-item.clickable {
+            cursor: pointer;
+        }
+
+        .stats-item.clickable:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(78, 205, 196, 0.4);
+            transform: translateY(-2px);
         }
 
         .stats-number {
@@ -468,12 +527,175 @@
             font-size: 0.75rem;
             font-weight: 500;
             border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .detail-tag:hover {
+            background: rgba(255,255,255,0.15);
+            color: white;
         }
 
         .genre-tag {
             background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
             color: white;
             border: none;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            width: 100%;
+        }
+
+        .modal h2 {
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .artist-item, .genre-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .artist-item:hover, .genre-item:hover {
+            color: white;
+            background: rgba(255,255,255,0.05);
+            margin: 0 -15px;
+            padding-left: 15px;
+            padding-right: 15px;
+            border-radius: 8px;
+        }
+
+        .artist-item:last-child, .genre-item:last-child {
+            border-bottom: none;
+        }
+
+        .artist-name, .genre-name {
+            font-weight: 500;
+        }
+
+        .artist-count, .genre-count {
+            color: #4ecdc4;
+            font-size: 0.9rem;
+            background: rgba(78, 205, 196, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .album-details {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .album-art-large {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .album-info {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .album-info h3 {
+            color: #4ecdc4;
+            margin-bottom: 5px;
+        }
+
+        .album-info p {
+            margin-bottom: 10px;
+        }
+
+        .tracklist {
+            margin-top: 20px;
+        }
+
+        .tracklist h4 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+
+        .track-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .track-item:last-child {
+            border-bottom: none;
+        }
+
+        .track-position {
+            color: #888;
+            min-width: 30px;
+        }
+
+        .track-title {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        .track-duration {
+            color: #888;
+            font-size: 0.9rem;
         }
 
         @media (max-width: 768px) {
@@ -493,8 +715,9 @@
                 flex-direction: column;
             }
 
-            .search-container {
+            .search-container, .nested-search-container {
                 min-width: unset;
+                flex: none;
                 width: 100%;
             }
 
@@ -517,6 +740,16 @@
 
             .collection-grid.compact {
                 grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+
+            .album-details {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .album-art-large {
+                width: 100%;
+                height: 250px;
             }
         }
 
@@ -555,6 +788,10 @@
                     <input type="text" class="search-box" placeholder="Search artists, albums, or genres..." id="searchBox">
                     <button class="search-clear" id="searchClear">×</button>
                 </div>
+                <div class="nested-search-container">
+                    <input type="text" class="nested-search" placeholder="Search within results..." id="nestedSearch">
+                    <button class="search-clear" id="nestedSearchClear" style="right: 10px;">×</button>
+                </div>
                 <div class="view-toggle">
                     <button class="view-btn active" data-view="normal">Grid</button>
                     <button class="view-btn" data-view="compact">Compact</button>
@@ -562,7 +799,10 @@
             </div>
 
             <div class="filter-section">
-                <div class="filter-label">Filter by Genre</div>
+                <div class="filter-label">
+                    <span id="filterLabel">Filter by Genre</span>
+                    <button class="expand-btn" id="expandGenres">All</button>
+                </div>
                 <div class="filter-buttons" id="genreFilters">
                     <button class="filter-btn active" data-genre="all">All Genres</button>
                 </div>
@@ -584,11 +824,11 @@
                 <span class="stats-number" id="totalRecords">0</span>
                 <span class="stats-label">Records</span>
             </div>
-            <div class="stats-item">
+            <div class="stats-item clickable" id="artistsStats">
                 <span class="stats-number" id="totalArtists">0</span>
                 <span class="stats-label">Artists</span>
             </div>
-            <div class="stats-item">
+            <div class="stats-item clickable" id="genresStats">
                 <span class="stats-number" id="totalGenres">0</span>
                 <span class="stats-label">Genres</span>
             </div>
@@ -604,6 +844,32 @@
         </div>
 
         <div class="collection-grid" id="collectionGrid"></div>
+    </div>
+
+    <!-- Artist List Modal -->
+    <div class="modal" id="artistModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeArtistModal">×</button>
+            <h2>Artists in Collection</h2>
+            <div id="artistListContent"></div>
+        </div>
+    </div>
+
+    <!-- Genre List Modal -->
+    <div class="modal" id="genreModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeGenreModal">×</button>
+            <h2 id="genreModalTitle">All Genres</h2>
+            <div id="genreListContent"></div>
+        </div>
+    </div>
+
+    <!-- Album Details Modal -->
+    <div class="modal" id="albumModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeAlbumModal">×</button>
+            <div id="albumDetailsContent"></div>
+        </div>
     </div>
 
     <script>
@@ -636,6 +902,8 @@
         let currentView = 'normal';
         let currentGenre = 'all';
         let currentSort = 'artist';
+        let isSubGenreMode = false;
+        let parentGenre = null;
 
         class DiscogsCollection {
             constructor() {
@@ -646,266 +914,87 @@
                 };
             }
 
-async fetchCollection() {
-    if (DISCOGS_USERNAME === 'YOUR_USERNAME_HERE' || DISCOGS_TOKEN === 'YOUR_API_TOKEN_HERE') {
-        throw new Error('Please configure your Discogs username and API token');
-    }
-
-    let allItems = [];
-    let page = 1;
-    let totalPages = 1;
-    let hasMore = true;
-
-    const progressContainer = document.getElementById('progressContainer');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    progressContainer.style.display = 'block';
-
-    try {
-        while (hasMore && page <= 10) {
-            const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
-
-            progressText.textContent = `Loading page ${page}${totalPages > 1 ? ` of ${Math.min(totalPages, 10)}` : ''}...`;
-
-            const response = await fetch(url, { headers: this.headers });
-
-            if (!response.ok) {
-                if (response.status === 401) throw new Error('Invalid API token. Please check your token.');
-                if (response.status === 404) throw new Error('User not found. Please check your username.');
-                if (response.status === 429) throw new Error('Rate limit exceeded. Please try again later.');
-                throw new Error(`API Error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            allItems = allItems.concat(data.releases);
-
-            if (page === 1) {
-                totalPages = Math.min(data.pagination.pages, 10);
-            }
-
-            const progress = (page / totalPages) * 100;
-            progressFill.style.width = `${progress}%`;
-
-            hasMore = page < totalPages;
-            page++;
-
-            if (page === 2) {
-                this.processAndDisplayRecords(allItems.slice(0, 100));
-            }
-
-            if (hasMore) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        }
-
-        progressContainer.style.display = 'none';
-        this.processAndDisplayRecords(allItems);
-        return allItems;
-
-    } catch (error) {
-        progressContainer.style.display = 'none';
-        throw error;
-    }
-}
-
-
-            createRecordCard(record) {
-                const card = document.createElement('div');
-                card.className = `record-card ${currentView === 'compact' ? 'compact' : ''}`;
-                
-                const imageUrl = record.cover_image || record.thumb || '';
-                const imageElement = imageUrl ? 
-                    `<img src="${imageUrl}" alt="${record.title}" class="album-art" loading="lazy">` :
-                    `<div class="no-image">🎵</div>`;
-
-                const genreTags = record.genres.slice(0, 2).map(genre => 
-                    `<span class="detail-tag genre-tag">${genre}</span>`
-                ).join('');
-
-                const yearTag = record.year !== 'Unknown' ? 
-                    `<span class="detail-tag">${record.year}</span>` : '';
-
-                const formatTag = record.formats ? 
-                    `<span class="detail-tag">${record.formats}</span>` : '';
-
-                card.innerHTML = `
-                    ${imageElement}
-                    <div class="record-info">
-                        <div class="artist">${record.artist}</div>
-                        <div class="title">${record.title}</div>
-                        <div class="kallax-location">📍 ${record.kallax_location}</div>
-                        <div class="details">
-                            ${genreTags}
-                            ${yearTag}
-                            ${formatTag}
-                        </div>
-                    </div>
-                `;
-
-                return card;
-            }
-        }
-
-        // Initialize the collection
-        let discogsCollection;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            discogsCollection = new DiscogsCollection();
-            
-            try {
-                await discogsCollection.fetchCollection();
-                console.log(`Successfully loaded ${allRecords.length} records`);
-                
-            } catch (error) {
-                console.error('Error loading collection:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').innerHTML = `
-                    <h3>Error Loading Collection</h3>
-                    <p>${error.message}</p>
-                `;
-            }
-        });
-
-        // Search functionality
-        document.getElementById('searchBox').addEventListener('input', (e) => {
-            const searchTerm = e.target.value;
-            if (discogsCollection) {
-                discogsCollection.filterRecords(searchTerm);
-            }
-            
-            const clearBtn = document.getElementById('searchClear');
-            clearBtn.classList.toggle('visible', searchTerm.length > 0);
-        });
-
-        document.getElementById('searchClear').addEventListener('click', () => {
-            document.getElementById('searchBox').value = '';
-            document.getElementById('searchClear').classList.remove('visible');
-            if (discogsCollection) {
-                discogsCollection.filterRecords('');
-            }
-        });
-
-        // View toggle
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentView = btn.dataset.view;
-                
-                // Update grid class and re-render
-                const grid = document.getElementById('collectionGrid');
-                grid.className = `collection-grid ${currentView === 'compact' ? 'compact' : ''}`;
-                
-                // Update existing cards
-                document.querySelectorAll('.record-card').forEach(card => {
-                    if (currentView === 'compact') {
-                        card.classList.add('compact');
-                    } else {
-                        card.classList.remove('compact');
-                    }
-                });
-            });
-        });
-
-        // Genre filter
-        document.addEventListener('click', (e) => {
-            if (e.target.matches('.filter-btn')) {
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                currentGenre = e.target.dataset.genre;
-                
-                if (discogsCollection) {
-                    const searchTerm = document.getElementById('searchBox').value;
-                    discogsCollection.filterRecords(searchTerm);
+            async fetchCollection() {
+                if (DISCOGS_USERNAME === 'YOUR_USERNAME_HERE' || DISCOGS_TOKEN === 'YOUR_API_TOKEN_HERE') {
+                    throw new Error('Please configure your Discogs username and API token');
                 }
-            }
-        });
 
-        // Sort buttons
-        document.querySelectorAll('.sort-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentSort = btn.dataset.sort;
-                
-                if (discogsCollection) {
-                    discogsCollection.sortRecords();
-                }
-            });
-        });
+                let allItems = [];
+                let page = 1;
+                let totalPages = 1;
+                let hasMore = true;
 
-        // Home title click - reset everything
-        document.getElementById('homeTitle').addEventListener('click', () => {
-            currentGenre = 'all';
-            document.getElementById('searchBox').value = '';
-            document.getElementById('searchClear').classList.remove('visible');
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
-            
-            if (discogsCollection) {
-                discogsCollection.filterRecords();
-            }
-        });
+                const progressContainer = document.getElementById('progressContainer');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                progressContainer.style.display = 'block';
 
-    </script>
-</body>
-</html> (!response.ok) {
-                            if (response.status === 401) {
-                                throw new Error('Invalid API token. Please check your token.');
-                            } else if (response.status === 404) {
-                                throw new Error('User not found. Please check your username.');
-                            } else if (response.status === 429) {
-                                throw new Error('Rate limit exceeded. Please try again later.');
-                            } else {
-                                throw new Error(`API Error: ${response.status}`);
-                            }
+                try {
+                    while (hasMore && page <= 10) {
+                        const url = `${this.baseUrl}/users/${DISCOGS_USERNAME}/collection/folders/0/releases?page=${page}&per_page=100`;
+
+                        progressText.textContent = `Loading page ${page}${totalPages > 1 ? ` of ${Math.min(totalPages, 10)}` : ''}...`;
+
+                        const response = await fetch(url, { headers: this.headers });
+
+                        if (!response.ok) {
+                            if (response.status === 401) throw new Error('Invalid API token. Please check your token.');
+                            if (response.status === 404) throw new Error('User not found. Please check your username.');
+                            if (response.status === 429) throw new Error('Rate limit exceeded. Please try again later.');
+                            throw new Error(`API Error: ${response.status}`);
                         }
 
                         const data = await response.json();
                         allItems = allItems.concat(data.releases);
-                        
+
                         if (page === 1) {
-                            totalPages = Math.min(data.pagination.pages, 10); // Cap at 10 pages
+                            totalPages = Math.min(data.pagination.pages, 10);
                         }
-                        
-                        // Update progress
+
                         const progress = (page / totalPages) * 100;
                         progressFill.style.width = `${progress}%`;
-                        
+
                         hasMore = page < totalPages;
                         page++;
-                        
-                        // Process records as we get them for faster display
+
                         if (page === 2) {
-                            // Process first batch immediately
                             this.processAndDisplayRecords(allItems.slice(0, 100));
                         }
-                        
-                        // Shorter delay for faster loading
+
                         if (hasMore) {
                             await new Promise(resolve => setTimeout(resolve, 50));
                         }
                     }
-                    
+
                     progressContainer.style.display = 'none';
+                    this.processAndDisplayRecords(allItems);
                     return allItems;
-                    
+
                 } catch (error) {
                     progressContainer.style.display = 'none';
                     throw error;
                 }
             }
 
+            async fetchAlbumDetails(releaseId) {
+                const url = `${this.baseUrl}/releases/${releaseId}`;
+                try {
+                    const response = await fetch(url, { headers: this.headers });
+                    if (!response.ok) throw new Error('Failed to fetch album details');
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error fetching album details:', error);
+                    return null;
+                }
+            }
+
             processAndDisplayRecords(records) {
-                const processedRecords = records.map(this.formatRecordData);
+                const processedRecords = records.map(this.formatRecordData.bind(this));
                 
                 if (allRecords.length === 0) {
-                    // First batch - initialize everything
                     allRecords = processedRecords;
                     this.initializeUI();
                 } else {
-                    // Subsequent batches - just add to existing
                     allRecords = allRecords.concat(processedRecords);
                 }
                 
@@ -961,11 +1050,12 @@ async fetchCollection() {
             }
 
             updateStats() {
-                const totalRecords = allRecords.length;
-                const totalArtists = new Set(allRecords.map(r => r.artist)).size;
+                const currentRecords = filteredRecords.length > 0 ? filteredRecords : allRecords;
+                const totalRecords = currentRecords.length;
+                const totalArtists = new Set(currentRecords.map(r => r.artist)).size;
                 const totalGenres = new Set([
-                    ...allRecords.flatMap(r => r.genres),
-                    ...allRecords.flatMap(r => r.styles)
+                    ...currentRecords.flatMap(r => r.genres),
+                    ...currentRecords.flatMap(r => r.styles)
                 ]).size;
 
                 document.getElementById('totalRecords').textContent = totalRecords;
@@ -975,24 +1065,29 @@ async fetchCollection() {
 
             updateGenreFilters() {
                 const genreFilters = document.getElementById('genreFilters');
+                const currentRecords = currentGenre === 'all' ? allRecords : filteredRecords;
                 const genreCounts = {};
 
-                allRecords.forEach(record => {
-                    record.genres.forEach(genre => {
-                        genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-                    });
-                    record.styles.forEach(style => {
-                        genreCounts[style] = (genreCounts[style] || 0) + 1;
-                    });
+                currentRecords.forEach(record => {
+                    if (isSubGenreMode) {
+                        record.styles.forEach(style => {
+                            genreCounts[style] = (genreCounts[style] || 0) + 1;
+                        });
+                    } else {
+                        record.genres.forEach(genre => {
+                            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+                        });
+                    }
                 });
 
                 const sortedGenres = Object.entries(genreCounts)
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 15);
 
+                const allText = isSubGenreMode ? 'All Sub-genres' : 'All Genres';
                 genreFilters.innerHTML = `
                     <button class="filter-btn ${currentGenre === 'all' ? 'active' : ''}" data-genre="all">
-                        All Genres
+                        ${allText}
                     </button>
                 `;
 
@@ -1003,21 +1098,31 @@ async fetchCollection() {
                     button.textContent = `${genre} (${count})`;
                     genreFilters.appendChild(button);
                 });
+
+                // Update filter label
+                const filterLabel = document.getElementById('filterLabel');
+                filterLabel.textContent = isSubGenreMode ? 'Filter by Sub-genre' : 'Filter by Genre';
             }
 
-            filterRecords(searchTerm = '') {
+            filterRecords(searchTerm = '', nestedSearchTerm = '') {
                 let filtered = allRecords;
 
+                // Apply main genre/sub-genre filter
                 if (currentGenre !== 'all') {
-                    filtered = filtered.filter(record => 
-                        record.genres.some(genre => 
-                            genre.toLowerCase().includes(currentGenre.toLowerCase())
-                        ) || record.styles.some(style => 
-                            style.toLowerCase().includes(currentGenre.toLowerCase())
-                        )
-                    );
+                    filtered = filtered.filter(record => {
+                        if (isSubGenreMode) {
+                            return record.styles.some(style => 
+                                style.toLowerCase().includes(currentGenre.toLowerCase())
+                            );
+                        } else {
+                            return record.genres.some(genre => 
+                                genre.toLowerCase().includes(currentGenre.toLowerCase())
+                            );
+                        }
+                    });
                 }
 
+                // Apply main search
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
                     filtered = filtered.filter(record =>
@@ -1029,11 +1134,26 @@ async fetchCollection() {
                 }
 
                 filteredRecords = filtered;
+
+                // Apply nested search
+                let displayed = filteredRecords;
+                if (nestedSearchTerm) {
+                    const term = nestedSearchTerm.toLowerCase();
+                    displayed = displayed.filter(record =>
+                        record.artist.toLowerCase().includes(term) ||
+                        record.title.toLowerCase().includes(term) ||
+                        record.genres.some(genre => genre.toLowerCase().includes(term)) ||
+                        record.styles.some(style => style.toLowerCase().includes(term))
+                    );
+                }
+
+                displayedRecords = displayed;
+                this.updateStats();
                 this.sortRecords();
             }
 
             sortRecords() {
-                const sorted = [...filteredRecords];
+                const sorted = [...displayedRecords];
                 
                 switch (currentSort) {
                     case 'artist':
@@ -1064,18 +1184,10 @@ async fetchCollection() {
 
             renderRecords() {
                 const grid = document.getElementById('collectionGrid');
-                const existingCards = grid.children.length;
-                
-                // Only render new cards to avoid re-rendering everything
-                const cardsToAdd = displayedRecords.slice(existingCards);
-                
-                if (existingCards === 0) {
-                    // First render - clear and set class
-                    grid.innerHTML = '';
-                    grid.className = `collection-grid ${currentView === 'compact' ? 'compact' : ''}`;
-                }
+                grid.innerHTML = '';
+                grid.className = `collection-grid ${currentView === 'compact' ? 'compact' : ''}`;
 
-                if (displayedRecords.length === 0 && existingCards === 0) {
+                if (displayedRecords.length === 0) {
                     grid.innerHTML = `
                         <div style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px;">
                             <h3>No records found</h3>
@@ -1085,28 +1197,364 @@ async fetchCollection() {
                     return;
                 }
 
-                // Use requestAnimationFrame for smoother rendering
-               // Use requestAnimationFrame for smoother rendering
-let cardIndex = 0;
-const renderBatch = () => {
-    const batchSize = 20;
-    const endIndex = Math.min(cardIndex + batchSize, displayedRecords.length);
+                displayedRecords.forEach((record, index) => {
+                    const card = this.createRecordCard(record);
+                    card.style.animationDelay = `${index * 0.05}s`;
+                    grid.appendChild(card);
+                });
+            }
 
-    for (let i = cardIndex; i < endIndex; i++) {
-        if (i >= existingCards) {
-            const card = this.createRecordCard(displayedRecords[i]);
-            card.style.animationDelay = `${(i - existingCards) * 0.1}s`;
-            grid.appendChild(card);
+            createRecordCard(record) {
+                const card = document.createElement('div');
+                card.className = `record-card ${currentView === 'compact' ? 'compact' : ''}`;
+                card.addEventListener('click', () => this.showAlbumDetails(record.id));
+                
+                const imageUrl = record.cover_image || record.thumb || '';
+                const imageElement = imageUrl ? 
+                    `<img src="${imageUrl}" alt="${record.title}" class="album-art" loading="lazy">` :
+                    `<div class="no-image">🎵</div>`;
+
+                const genreTags = record.genres.slice(0, 2).map(genre => 
+                    `<span class="detail-tag genre-tag" data-filter="${genre}">${genre}</span>`
+                ).join('');
+
+                const yearTag = record.year !== 'Unknown' ? 
+                    `<span class="detail-tag" data-filter="${record.year}">${record.year}</span>` : '';
+
+                const formatTag = record.formats ? 
+                    `<span class="detail-tag" data-filter="${record.formats}">${record.formats}</span>` : '';
+
+                card.innerHTML = `
+                    ${imageElement}
+                    <div class="record-info">
+                        <div class="artist">${record.artist}</div>
+                        <div class="title">${record.title}</div>
+                        <div class="kallax-location">📍 ${record.kallax_location}</div>
+                        <div class="details">
+                            ${genreTags}
+                            ${yearTag}
+                            ${formatTag}
+                        </div>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            async showAlbumDetails(releaseId) {
+                const modal = document.getElementById('albumModal');
+                const content = document.getElementById('albumDetailsContent');
+                
+                content.innerHTML = '<div style="text-align: center; padding: 40px; color: #4ecdc4;">Loading album details...</div>';
+                modal.style.display = 'flex';
+
+                const albumData = await this.fetchAlbumDetails(releaseId);
+                
+                if (!albumData) {
+                    content.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff6b6b;">Failed to load album details</div>';
+                    return;
+                }
+
+                const imageUrl = albumData.images && albumData.images.length > 0 ? albumData.images[0].uri : '';
+                const tracklist = albumData.tracklist || [];
+
+                content.innerHTML = `
+                    <div class="album-details">
+                        <div>
+                            ${imageUrl ? 
+                                `<img src="${imageUrl}" alt="${albumData.title}" class="album-art-large">` :
+                                `<div style="width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: rgba(255,255,255,0.3);">🎵</div>`
+                            }
+                        </div>
+                        <div class="album-info">
+                            <h3>Album Information</h3>
+                            <p><strong>Title:</strong> ${albumData.title}</p>
+                            <p><strong>Artist:</strong> ${albumData.artists ? albumData.artists.map(a => a.name).join(', ') : 'Unknown'}</p>
+                            <p><strong>Year:</strong> ${albumData.year || 'Unknown'}</p>
+                            <p><strong>Label:</strong> ${albumData.labels ? albumData.labels.map(l => l.name).join(', ') : 'Unknown'}</p>
+                            <p><strong>Format:</strong> ${albumData.formats ? albumData.formats.map(f => f.name).join(', ') : 'Unknown'}</p>
+                            <p><strong>Genres:</strong> ${albumData.genres ? albumData.genres.join(', ') : 'Unknown'}</p>
+                            <p><strong>Styles:</strong> ${albumData.styles ? albumData.styles.join(', ') : 'Unknown'}</p>
+                            
+                            ${tracklist.length > 0 ? `
+                                <div class="tracklist">
+                                    <h4>Tracklist</h4>
+                                    ${tracklist.map(track => `
+                                        <div class="track-item">
+                                            <span class="track-position">${track.position || ''}</span>
+                                            <span class="track-title">${track.title}</span>
+                                            <span class="track-duration">${track.duration || ''}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
         }
-    }
 
-    cardIndex = endIndex;
+        // Initialize the collection
+        let discogsCollection;
 
-    if (cardIndex < displayedRecords.length) {
-        requestAnimationFrame(renderBatch);
-    }
-};
+        document.addEventListener('DOMContentLoaded', async () => {
+            discogsCollection = new DiscogsCollection();
+            
+            try {
+                await discogsCollection.fetchCollection();
+                console.log(`Successfully loaded ${allRecords.length} records`);
+                
+            } catch (error) {
+                console.error('Error loading collection:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = `
+                    <h3>Error Loading Collection</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
 
-if (cardsToAdd.length > 0) {
-    renderBatch();
-}
+        // Search functionality
+        document.getElementById('searchBox').addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            const nestedTerm = document.getElementById('nestedSearch').value;
+            if (discogsCollection) {
+                discogsCollection.filterRecords(searchTerm, nestedTerm);
+            }
+            
+            const clearBtn = document.getElementById('searchClear');
+            clearBtn.classList.toggle('visible', searchTerm.length > 0);
+        });
+
+        document.getElementById('nestedSearch').addEventListener('input', (e) => {
+            const nestedTerm = e.target.value;
+            const mainTerm = document.getElementById('searchBox').value;
+            if (discogsCollection) {
+                discogsCollection.filterRecords(mainTerm, nestedTerm);
+            }
+            
+            const clearBtn = document.getElementById('nestedSearchClear');
+            clearBtn.classList.toggle('visible', nestedTerm.length > 0);
+        });
+
+        document.getElementById('searchClear').addEventListener('click', () => {
+            document.getElementById('searchBox').value = '';
+            document.getElementById('searchClear').classList.remove('visible');
+            const nestedTerm = document.getElementById('nestedSearch').value;
+            if (discogsCollection) {
+                discogsCollection.filterRecords('', nestedTerm);
+            }
+        });
+
+        document.getElementById('nestedSearchClear').addEventListener('click', () => {
+            document.getElementById('nestedSearch').value = '';
+            document.getElementById('nestedSearchClear').classList.remove('visible');
+            const mainTerm = document.getElementById('searchBox').value;
+            if (discogsCollection) {
+                discogsCollection.filterRecords(mainTerm, '');
+            }
+        });
+
+        // View toggle
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentView = btn.dataset.view;
+                
+                if (discogsCollection) {
+                    discogsCollection.renderRecords();
+                }
+            });
+        });
+
+        // Genre filter
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.filter-btn')) {
+                const newGenre = e.target.dataset.genre;
+                
+                // Check if switching from all genres to specific genre (enter sub-genre mode)
+                if (currentGenre === 'all' && newGenre !== 'all') {
+                    isSubGenreMode = true;
+                    parentGenre = newGenre;
+                }
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                currentGenre = newGenre;
+                
+                if (discogsCollection) {
+                    const searchTerm = document.getElementById('searchBox').value;
+                    const nestedTerm = document.getElementById('nestedSearch').value;
+                    discogsCollection.updateGenreFilters();
+                    discogsCollection.filterRecords(searchTerm, nestedTerm);
+                }
+            }
+
+            // Handle clickable tags on cards
+            if (e.target.matches('.detail-tag[data-filter]')) {
+                e.stopPropagation();
+                const filterValue = e.target.getAttribute('data-filter');
+                document.getElementById('searchBox').value = filterValue;
+                document.getElementById('searchClear').classList.add('visible');
+                
+                if (discogsCollection) {
+                    const nestedTerm = document.getElementById('nestedSearch').value;
+                    discogsCollection.filterRecords(filterValue, nestedTerm);
+                }
+            }
+        });
+
+        // Expand genres button
+        document.getElementById('expandGenres').addEventListener('click', () => {
+            showGenreModal();
+        });
+
+        // Sort buttons
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+                
+                if (discogsCollection) {
+                    discogsCollection.sortRecords();
+                }
+            });
+        });
+
+        // Stats click handlers
+        document.getElementById('artistsStats').addEventListener('click', () => {
+            showArtistModal();
+        });
+
+        document.getElementById('genresStats').addEventListener('click', () => {
+            showGenreModal();
+        });
+
+        // Home title click - reset everything
+        document.getElementById('homeTitle').addEventListener('click', () => {
+            currentGenre = 'all';
+            isSubGenreMode = false;
+            parentGenre = null;
+            document.getElementById('searchBox').value = '';
+            document.getElementById('nestedSearch').value = '';
+            document.getElementById('searchClear').classList.remove('visible');
+            document.getElementById('nestedSearchClear').classList.remove('visible');
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.filter-btn[data-genre="all"]').classList.add('active');
+            
+            if (discogsCollection) {
+                discogsCollection.updateGenreFilters();
+                discogsCollection.filterRecords();
+            }
+        });
+
+        // Modal functions
+        function showArtistModal() {
+            const modal = document.getElementById('artistModal');
+            const content = document.getElementById('artistListContent');
+            
+            const currentRecords = displayedRecords.length > 0 ? displayedRecords : allRecords;
+            const artistCounts = {};
+            
+            currentRecords.forEach(record => {
+                const artist = record.artist;
+                artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            });
+
+            const sortedArtists = Object.entries(artistCounts).sort((a, b) => a[0].localeCompare(b[0]));
+            
+            content.innerHTML = '';
+            sortedArtists.forEach(([artist, count]) => {
+                const artistItem = document.createElement('div');
+                artistItem.className = 'artist-item';
+                artistItem.innerHTML = `
+                    <span class="artist-name">${artist}</span>
+                    <span class="artist-count">${count} record${count > 1 ? 's' : ''}</span>
+                `;
+                artistItem.addEventListener('click', () => {
+                    // Filter by this artist and close modal
+                    document.getElementById('searchBox').value = artist;
+                    document.getElementById('searchClear').classList.add('visible');
+                    modal.style.display = 'none';
+                    
+                    if (discogsCollection) {
+                        discogsCollection.filterRecords(artist, '');
+                    }
+                });
+                content.appendChild(artistItem);
+            });
+            
+            modal.style.display = 'flex';
+        }
+
+        function showGenreModal() {
+            const modal = document.getElementById('genreModal');
+            const content = document.getElementById('genreListContent');
+            const title = document.getElementById('genreModalTitle');
+            
+            const currentRecords = displayedRecords.length > 0 ? displayedRecords : allRecords;
+            const genreCounts = {};
+            
+            currentRecords.forEach(record => {
+                [...record.genres, ...record.styles].forEach(genre => {
+                    genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+                });
+            });
+
+            const sortedGenres = Object.entries(genreCounts).sort((a, b) => a[0].localeCompare(b[0]));
+            
+            title.textContent = isSubGenreMode ? 'All Sub-genres' : 'All Genres';
+            content.innerHTML = '';
+            
+            sortedGenres.forEach(([genre, count]) => {
+                const genreItem = document.createElement('div');
+                genreItem.className = 'genre-item';
+                genreItem.innerHTML = `
+                    <span class="genre-name">${genre}</span>
+                    <span class="genre-count">${count} record${count > 1 ? 's' : ''}</span>
+                `;
+                genreItem.addEventListener('click', () => {
+                    // Filter by this genre and close modal
+                    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    currentGenre = genre;
+                    modal.style.display = 'none';
+                    
+                    if (discogsCollection) {
+                        discogsCollection.updateGenreFilters();
+                        discogsCollection.filterRecords();
+                    }
+                });
+                content.appendChild(genreItem);
+            });
+            
+            modal.style.display = 'flex';
+        }
+
+        // Modal close handlers
+        document.getElementById('closeArtistModal').addEventListener('click', () => {
+            document.getElementById('artistModal').style.display = 'none';
+        });
+
+        document.getElementById('closeGenreModal').addEventListener('click', () => {
+            document.getElementById('genreModal').style.display = 'none';
+        });
+
+        document.getElementById('closeAlbumModal').addEventListener('click', () => {
+            document.getElementById('albumModal').style.display = 'none';
+        });
+
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
