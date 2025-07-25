@@ -831,4 +831,186 @@ h1:hover {
     .collection-grid.compact {
         grid-template-columns: repeat(2, 1fr);
     }
+    /* Add this to your existing style.css file */
+
+/* Cube Selection Modal Styles */
+#cubeSelectionModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    backdrop-filter: blur(20px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#cubeSelectionModal .modal-content {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 100%;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#cubeSelectionModal h2 {
+    color: #4ecdc4;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+#cubeSelectionModal label {
+    color: #ccc;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#cubeSelectionModal select {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+#cubeSelectionModal select:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+    background: rgba(255,255,255,0.15);
+}
+
+#cubeSelectionModal select option {
+    background: #333;
+    color: white;
+    padding: 8px;
+}
+
+#cubeSelectionModal .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+#cubeSelectionModal .close-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+#cubeSelectionModal .sort-btn,
+#cubeSelectionModal .filter-btn {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0 5px;
+}
+
+#cubeSelectionModal .sort-btn {
+    background: linear-gradient(135deg, #45b7d1, #96c93d);
+    border: none;
+    color: white;
+}
+
+#cubeSelectionModal .sort-btn:hover {
+    background: linear-gradient(135deg, #5bc0de, #a6d93e);
+    transform: translateY(-2px);
+}
+
+#cubeSelectionModal .filter-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #ccc;
+}
+
+#cubeSelectionModal .filter-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
+/* Position Selector Styles */
+#positionSelector {
+    margin: 20px 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+#positionSelector.show {
+    opacity: 1;
+    max-height: 200px;
+}
+
+/* Enhanced existing modal styles for better layering */
+.modal {
+    z-index: 1000;
+}
+
+#cubeSelectionModal {
+    z-index: 2000; /* Higher than regular modals */
+}
+
+/* Responsive design for cube selection modal */
+@media (max-width: 768px) {
+    #cubeSelectionModal .modal-content {
+        margin: 10px;
+        padding: 20px;
+        max-width: none;
+    }
+    
+    #cubeSelectionModal h2 {
+        font-size: 1.2rem;
+    }
+    
+    #cubeSelectionModal select {
+        padding: 10px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}
+
+@media (max-width: 480px) {
+    #cubeSelectionModal {
+        padding: 10px;
+    }
+    
+    #cubeSelectionModal .modal-content {
+        padding: 15px;
+    }
+    
+    #cubeSelectionModal .sort-btn,
+    #cubeSelectionModal .filter-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
 }
