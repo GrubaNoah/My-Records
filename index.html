@@ -1016,8 +1016,14 @@
 
             analyzeCollectionFormats() {
                 let totalRecords = 0;
-                let gatefoldCount = 0;
-                let singleCount = 0;
+                let formatCounts = {
+                    single: 0,
+                    gatefold: 0,
+                    double: 0,
+                    triple: 0,
+                    boxSet: 0,
+                    other: 0
+                };
                 let formatBreakdown = {};
 
                 allRecords.forEach(record => {
@@ -1027,45 +1033,76 @@
                     // Count format types
                     formatBreakdown[record.formats] = (formatBreakdown[record.formats] || 0) + 1;
                     
-                    // Detect gatefolds
-                    if (formats.includes('gatefold') || 
-                        formats.includes('2×') || 
-                        formats.includes('double') ||
-                        formats.includes('2lp') ||
-                        formats.includes('box set')) {
-                        gatefoldCount++;
+                    // Categorize by thickness/space requirements
+                    if (formats.includes('box set') || formats.includes('boxset')) {
+                        formatCounts.boxSet++;
+                    } else if (formats.includes('3×') || formats.includes('triple') || formats.includes('3lp')) {
+                        formatCounts.triple++;
+                    } else if (formats.includes('2×') || formats.includes('double') || formats.includes('2lp')) {
+                        formatCounts.double++;
+                    } else if (formats.includes('gatefold')) {
+                        formatCounts.gatefold++;
                     } else {
-                        singleCount++;
+                        formatCounts.single++;
                     }
                 });
 
                 console.log('=== COLLECTION FORMAT ANALYSIS ===');
                 console.log(`Total records: ${totalRecords}`);
-                console.log(`Gatefold/Double records: ${gatefoldCount}`);
-                console.log(`Single records: ${singleCount}`);
-                console.log(`Gatefold ratio: ${(gatefoldCount/totalRecords*100).toFixed(1)}%`);
-                console.log(`Format breakdown:`, formatBreakdown);
+                console.log(`Single LP: ${formatCounts.single}`);
+                console.log(`Gatefold LP: ${formatCounts.gatefold}`);
+                console.log(`Double LP (2×): ${formatCounts.double}`);
+                console.log(`Triple LP (3×): ${formatCounts.triple}`);
+                console.log(`Box Sets: ${formatCounts.boxSet}`);
+                console.log(`Other formats: ${formatCounts.other}`);
+                console.log(`Detailed format breakdown:`, formatBreakdown);
 
-                // Calculate Kallax capacity with real data
-                this.calculateKallaxCapacity(gatefoldCount, singleCount);
+                // Calculate Kallax capacity with all format types
+                this.calculateKallaxCapacity(formatCounts);
             }
 
-            calculateKallaxCapacity(gatefoldCount, singleCount) {
+            calculateKallaxCapacity(formatCounts) {
                 const KALLAX_CUBE_DEPTH = 37; // cm
-                const SINGLE_LP_THICKNESS = 0.3; // cm
-                const GATEFOLD_LP_THICKNESS = 0.75; // cm
+                const THICKNESSES = {
+                    single: 0.3,      // cm - standard single LP
+                    gatefold: 0.75,   // cm - gatefold sleeve
+                    double: 0.6,      // cm - 2 records, standard sleeves
+                    triple: 0.9,      // cm - 3 records
+                    boxSet: 2.5,      // cm - varies widely, conservative estimate
+                    other: 0.4        // cm - average for unknown formats
+                };
+                const MAX_RECORDS_PER_CUBE = 60; // Noah's real-world limit
 
-                const totalRecords = gatefoldCount + singleCount;
-                const gatefoldRatio = gatefoldCount / totalRecords;
-                const singleRatio = singleCount / totalRecords;
-
-                // Average thickness per record based on actual collection
-                const avgThickness = (gatefoldRatio * GATEFOLD_LP_THICKNESS) + (singleRatio * SINGLE_LP_THICKNESS);
-                const recordsPerCube = Math.floor(KALLAX_CUBE_DEPTH / avgThickness);
+                const totalRecords = Object.values(formatCounts).reduce((a, b) => a + b, 0);
+                
+                // Calculate weighted average thickness
+                let totalThickness = 0;
+                Object.keys(formatCounts).forEach(format => {
+                    const count = formatCounts[format];
+                    const thickness = THICKNESSES[format] || THICKNESSES.other;
+                    totalThickness += count * thickness;
+                });
+                
+                const avgThickness = totalThickness / totalRecords;
+                
+                // Calculate theoretical capacity
+                const theoreticalCapacity = Math.floor(KALLAX_CUBE_DEPTH / avgThickness);
+                
+                // Use the more conservative estimate (real-world vs theoretical)
+                const recordsPerCube = Math.min(theoreticalCapacity, MAX_RECORDS_PER_CUBE);
 
                 console.log('=== KALLAX CAPACITY CALCULATION ===');
-                console.log(`Average record thickness: ${avgThickness.toFixed(2)}cm`);
-                console.log(`Estimated records per cube: ${recordsPerCube}`);
+                console.log(`Total records: ${totalRecords}`);
+                console.log('Format breakdown:');
+                Object.keys(formatCounts).forEach(format => {
+                    const count = formatCounts[format];
+                    const percentage = ((count / totalRecords) * 100).toFixed(1);
+                    console.log(`  ${format}: ${count} (${percentage}%) - ${THICKNESSES[format] || THICKNESSES.other}cm each`);
+                });
+                console.log(`Weighted average thickness: ${avgThickness.toFixed(2)}cm`);
+                console.log(`Theoretical capacity: ${theoreticalCapacity} records per cube`);
+                console.log(`Real-world limit: ${MAX_RECORDS_PER_CUBE} records per cube`);
+                console.log(`Using: ${recordsPerCube} records per cube`);
 
                 // Store for use in location algorithm
                 this.recordsPerCube = recordsPerCube;
