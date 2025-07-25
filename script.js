@@ -2,7 +2,7 @@
 const DISCOGS_USERNAME = 'grubanoah';
 const DISCOGS_TOKEN = 'AkLGdCCPJKGYNODfFfMhfUYjBBetgGmgUxvZRupx';
 
-// Noah's Kallax Genre Organization
+// Noah's Kallax Genre Organization - ADDED SOUNDTRACKS
 const KALLAX_GENRES = {
     'Bluegrass': 'A1',
     'Country': 'A1',
@@ -17,6 +17,7 @@ const KALLAX_GENRES = {
     'R&B': 'D2',
     'Rock': 'D4',
     'Soul': 'D4',
+    'Soundtracks': 'D4',
     'World': 'D4'
 };
 
@@ -40,6 +41,7 @@ class DiscogsCollection {
         this.genreLearningData = {};
         this.recordsPerCube = 60; // Default capacity
         this.positionCalculationNeeded = false;
+        this.manualAssignments = {}; // Track manual genre assignments
     }
 
     async fetchCollection() {
@@ -233,7 +235,28 @@ class DiscogsCollection {
         const artist = basic.artists ? basic.artists.map(a => a.name).join(', ') : 'Unknown Artist';
         const title = basic.title;
         
-        // Quick CSV lookup
+        // Check for manual assignment FIRST (overrides everything)
+        const recordKey = `${artist}|||${title}`;
+        if (this.manualAssignments[recordKey]) {
+            return {
+                id: basic.id,
+                title: title,
+                artist: artist,
+                year: basic.year || 'Unknown',
+                thumb: basic.thumb || '',
+                cover_image: basic.cover_image || basic.thumb || '',
+                formats: basic.formats ? basic.formats.map(f => f.name).join(', ') : '',
+                date_added: record.date_added,
+                genres: genres,
+                styles: styles,
+                kallaxGenre: this.manualAssignments[recordKey],
+                fromCSV: false,
+                manuallyAssigned: true,
+                kallax_location: 'Calculating...'
+            };
+        }
+        
+        // Quick CSV lookup (only if no manual assignment)
         const matchingKey = this.createMatchingKey(artist, title);
         const csvMatch = this.csvRecords[matchingKey];
         
@@ -257,6 +280,7 @@ class DiscogsCollection {
             styles: styles,
             kallaxGenre: assignedGenre,
             fromCSV: !!csvMatch,
+            manuallyAssigned: false,
             kallax_location: 'Calculating...' // Initialize with placeholder
         };
     }
@@ -272,9 +296,10 @@ class DiscogsCollection {
         // Fast genre mapping
         const allTerms = [...genres, ...styles].map(t => t.toLowerCase());
         
-        // Quick mapping check - ADDED COUNTRY DETECTION
+        // Quick mapping check - ADDED SOUNDTRACKS DETECTION
         if (allTerms.some(t => t.includes('hip hop') || t.includes('rap'))) return 'Hip Hop';
         if (allTerms.some(t => t.includes('country') || t.includes('americana') || t.includes('bluegrass'))) return 'Country';
+        if (allTerms.some(t => t.includes('soundtrack') || t.includes('original motion picture') || t.includes('ost') || t.includes('motion picture') || t.includes('tv soundtrack'))) return 'Soundtracks';
         if (allTerms.some(t => t.includes('electronic') || t.includes('techno'))) return 'Electronic';
         if (allTerms.some(t => t.includes('rock'))) return 'Rock';
         if (allTerms.some(t => t.includes('jazz'))) return 'Jazz';
@@ -445,10 +470,10 @@ class DiscogsCollection {
     }
 
     updateGenreFilters() {
-        // Use your exact CSV genres plus Kallax mappings - WITH COUNTRY
+        // Use your exact CSV genres plus Kallax mappings - WITH SOUNDTRACKS
         const kallaxGenres = [
             'Bluegrass', 'Country', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
-            'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'World'
+            'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'Soundtracks', 'World'
         ];
         
         const genreFilters = document.getElementById('genreFilters');
@@ -645,7 +670,7 @@ class DiscogsCollection {
             });
         });
 
-        // Define layout with Country in A1
+        // Define layout with Country and Soundtracks
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
             { genre: 'Country', cubes: ['A1'] },
@@ -660,6 +685,7 @@ class DiscogsCollection {
             { genre: 'R&B', cubes: ['D2'] },
             { genre: 'Rock', cubes: ['D4'] },
             { genre: 'Soul', cubes: ['D4'] },
+            { genre: 'Soundtracks', cubes: ['D4'] },
             { genre: 'World', cubes: ['D4'] }
         ];
 
@@ -791,6 +817,7 @@ class DiscogsCollection {
                         <option value="R&B">R&B</option>
                         <option value="Rock">Rock</option>
                         <option value="Soul">Soul</option>
+                        <option value="Soundtracks">Soundtracks</option>
                         <option value="World">World</option>
                         <option value="Unassigned">Unassigned</option>
                     </select>
@@ -834,7 +861,7 @@ class DiscogsCollection {
         this.pendingAssignments = {};
     }
 
-    // FIXED: Recategorize function with proper ID handling and optimization
+    // FIXED: Recategorize function that properly saves manual assignments
     recategorizeRecord(recordId, newGenre) {
         console.log(`🔄 Recategorizing record ${recordId} to ${newGenre}`);
         
@@ -849,6 +876,11 @@ class DiscogsCollection {
         
         const oldGenre = record.kallaxGenre;
         record.kallaxGenre = newGenre;
+        record.manuallyAssigned = true;
+        
+        // Store manual assignment to prevent CSV override
+        const recordKey = `${record.artist}|||${record.title}`;
+        this.manualAssignments[recordKey] = newGenre;
         
         // Learn from this manual correction
         if (!this.genreLearningData[record.artist]) {
@@ -858,6 +890,7 @@ class DiscogsCollection {
             (this.genreLearningData[record.artist][newGenre] || 0) + 1;
         
         console.log(`✅ Recategorized: ${record.artist} - ${record.title} from ${oldGenre} → ${newGenre}`);
+        console.log(`💾 Saved manual assignment: ${recordKey} → ${newGenre}`);
         
         // Only recalculate positions for affected genres (much faster!)
         this.updatePositionsForGenres([oldGenre, newGenre]);
@@ -886,6 +919,7 @@ class DiscogsCollection {
             { genre: 'R&B', cubes: ['D2'] },
             { genre: 'Rock', cubes: ['D4'] },
             { genre: 'Soul', cubes: ['D4'] },
+            { genre: 'Soundtracks', cubes: ['D4'] },
             { genre: 'World', cubes: ['D4'] }
         ];
 
