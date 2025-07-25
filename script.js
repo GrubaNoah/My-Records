@@ -1370,10 +1370,7 @@ function showRecategorizeModal(recordId) {
     console.log(`✅ Found record: ${record.artist} - ${record.title} (${record.kallaxGenre})`);
 
     // Reset modal to default state
-    document.getElementById('recategorizeDropdown').style.display = 'block';
-    document.getElementById('recatAddNew').style.display = 'block';
-    document.getElementById('recatNewInput').style.display = 'none';
-    document.getElementById('recatNewInput').value = '';
+    resetRecategorizeModal();
 
     // Populate modal
     document.getElementById('recatArtist').textContent = record.artist;
@@ -1383,6 +1380,10 @@ function showRecategorizeModal(recordId) {
     
     // Store record ID for later
     document.getElementById('recategorizeModal').setAttribute('data-record-id', recordId);
+    
+    // Setup input event listener if not already done
+    setupRecategorizeInput();
+    
     document.getElementById('recategorizeModal').style.display = 'flex';
 }
 
