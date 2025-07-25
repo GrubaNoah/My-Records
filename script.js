@@ -752,7 +752,10 @@ class DiscogsCollection {
                     <div class="predicted-genre">Predicted: ${record.kallaxGenre}</div>
                 </div>
                 <div class="genre-assignment">
-                    <select class="genre-dropdown" data-record-id="${record.id}">
+                    <button class="accept-btn" data-record-id="${record.id}" data-genre="${record.kallaxGenre}">
+                        ✓ Accept ${record.kallaxGenre}
+                    </button>
+                    <select class="genre-dropdown" data-record-id="${record.id}" style="display: none;">
                         <option value="">Select Genre...</option>
                         <option value="Bluegrass">Bluegrass</option>
                         <option value="Electronic">Electronic</option>
@@ -769,14 +772,13 @@ class DiscogsCollection {
                         <option value="World">World</option>
                         <option value="Unassigned">Unassigned</option>
                     </select>
-                    <button class="add-new-genre" data-record-id="${record.id}">+ New Genre</button>
+                    <button class="change-btn" data-record-id="${record.id}">Change</button>
+                    <button class="add-new-genre" data-record-id="${record.id}" style="display: none;">+ New Genre</button>
                     <input type="text" class="new-genre-input" data-record-id="${record.id}" placeholder="Enter new genre..." style="display: none;">
                 </div>
             `;
             
-            // Set predicted genre as selected
-            const dropdown = recordDiv.querySelector('.genre-dropdown');
-            dropdown.value = record.kallaxGenre;
+            // Set predicted genre as the pending assignment
             this.pendingAssignments[record.id] = record.kallaxGenre;
             
             content.appendChild(recordDiv);
@@ -1154,11 +1156,50 @@ document.addEventListener('click', (e) => {
         const recordId = e.target.getAttribute('data-record-id');
         const dropdown = document.querySelector(`.genre-dropdown[data-record-id="${recordId}"]`);
         const input = document.querySelector(`.new-genre-input[data-record-id="${recordId}"]`);
+        const changeBtn = document.querySelector(`.change-btn[data-record-id="${recordId}"]`);
         
         dropdown.style.display = 'none';
+        changeBtn.style.display = 'none';
         e.target.style.display = 'none';
         input.style.display = 'block';
         input.focus();
+    }
+
+    // Handle accept button clicks
+    if (e.target.matches('.accept-btn')) {
+        const recordId = e.target.getAttribute('data-record-id');
+        const genre = e.target.getAttribute('data-genre');
+        
+        if (discogsCollection && discogsCollection.pendingAssignments) {
+            discogsCollection.pendingAssignments[recordId] = genre;
+        }
+        
+        // Visual feedback
+        e.target.classList.add('accepted');
+        e.target.textContent = `✓ Accepted: ${genre}`;
+        e.target.style.pointerEvents = 'none';
+        
+        // Hide change button
+        const changeBtn = document.querySelector(`.change-btn[data-record-id="${recordId}"]`);
+        if (changeBtn) changeBtn.style.display = 'none';
+    }
+
+    // Handle change button clicks
+    if (e.target.matches('.change-btn')) {
+        const recordId = e.target.getAttribute('data-record-id');
+        const dropdown = document.querySelector(`.genre-dropdown[data-record-id="${recordId}"]`);
+        const addBtn = document.querySelector(`.add-new-genre[data-record-id="${recordId}"]`);
+        const acceptBtn = document.querySelector(`.accept-btn[data-record-id="${recordId}"]`);
+        
+        // Show dropdown and add button, hide accept and change buttons
+        dropdown.style.display = 'block';
+        addBtn.style.display = 'block';
+        acceptBtn.style.display = 'none';
+        e.target.style.display = 'none';
+        
+        // Set dropdown to current prediction
+        const currentGenre = acceptBtn.getAttribute('data-genre');
+        dropdown.value = currentGenre;
     }
 });
 
