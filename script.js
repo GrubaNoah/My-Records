@@ -1,13 +1,11 @@
-processAndDisplayRecords(records) {
-        const processedRecords = records.map(this.formatRecordData.bind(this));
-        
-        if (allRecords// ===== CONFIGURATION =====
+// ===== CONFIGURATION =====
 const DISCOGS_USERNAME = 'grubanoah';
 const DISCOGS_TOKEN = 'AkLGdCCPJKGYNODfFfMhfUYjBBetgGmgUxvZRupx';
 
 // Noah's Kallax Genre Organization
 const KALLAX_GENRES = {
     'Bluegrass': 'A1',
+    'Country': 'A1',
     'Electronic': 'A1-B1',
     'Folk': 'B1',
     'Funk': 'B1', 
@@ -274,7 +272,7 @@ class DiscogsCollection {
         // Fast genre mapping
         const allTerms = [...genres, ...styles].map(t => t.toLowerCase());
         
-        // Quick mapping check
+        // Quick mapping check - ADDED COUNTRY DETECTION
         if (allTerms.some(t => t.includes('hip hop') || t.includes('rap'))) return 'Hip Hop';
         if (allTerms.some(t => t.includes('country') || t.includes('americana') || t.includes('bluegrass'))) return 'Country';
         if (allTerms.some(t => t.includes('electronic') || t.includes('techno'))) return 'Electronic';
@@ -307,14 +305,15 @@ class DiscogsCollection {
         // Enhanced mapping based on analyzing your CSV collection
         return {
             'Bluegrass': ['bluegrass', 'newgrass'],
+            'Country': ['country', 'americana', 'nashville sound'],
             'Electronic': ['electronic', 'techno', 'house', 'ambient', 'idm', 'drum n bass', 'dubstep', 'downtempo'],
-            'Folk': ['folk', 'country', 'americana', 'singer/songwriter', 'acoustic'],
+            'Folk': ['folk', 'singer/songwriter', 'acoustic'],
             'Funk': ['funk', 'p-funk'],
             'Hip Hop': ['hip hop', 'hip-hop', 'rap', 'trap', 'conscious rap'],
             'Indie': ['indie', 'alternative', 'lo-fi', 'indie rock', 'indie pop'],
             'Jam Band': ['jam band', 'jam', 'psychedelic rock', 'grateful dead'],
             'Jazz': ['jazz', 'bebop', 'swing', 'fusion', 'smooth jazz', 'contemporary jazz'],
-            'Pop': ['pop', 'dance', 'disco', 'synthpop', 'dance-pop'], // Added synthpop here
+            'Pop': ['pop', 'dance', 'disco', 'synthpop', 'dance-pop'],
             'R&B': ['r&b', 'rnb', 'rhythm & blues', 'neo soul', 'contemporary r&b'],
             'Rock': ['rock', 'classic rock', 'hard rock', 'punk', 'metal', 'grunge', 'alternative rock'],
             'Soul': ['soul', 'motown', 'northern soul', 'classic soul'],
@@ -446,7 +445,7 @@ class DiscogsCollection {
     }
 
     updateGenreFilters() {
-        // Use your exact CSV genres plus Kallax mappings - ADDED COUNTRY
+        // Use your exact CSV genres plus Kallax mappings - WITH COUNTRY
         const kallaxGenres = [
             'Bluegrass', 'Country', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
             'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'World'
@@ -646,7 +645,7 @@ class DiscogsCollection {
             });
         });
 
-        // Define layout once - COUNTRY IN A1 BETWEEN BLUEGRASS AND ELECTRONIC
+        // Define layout with Country in A1
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
             { genre: 'Country', cubes: ['A1'] },
@@ -656,13 +655,6 @@ class DiscogsCollection {
             { genre: 'Hip Hop', cubes: ['B2', 'C2', 'C3', 'C4'] },
             { genre: 'Indie', cubes: ['C4'] },
             { genre: 'Jam Band', cubes: ['D1'] },
-            { genre: 'Jazz', cubes: ['D1', 'D2'] },
-            { genre: 'Pop', cubes: ['D2'] },
-            { genre: 'R&B', cubes: ['D2'] },
-            { genre: 'Rock', cubes: ['D4'] },
-            { genre: 'Soul', cubes: ['D4'] },
-            { genre: 'World', cubes: ['D4'] }
-        ];d', cubes: ['D1'] },
             { genre: 'Jazz', cubes: ['D1', 'D2'] },
             { genre: 'Pop', cubes: ['D2'] },
             { genre: 'R&B', cubes: ['D2'] },
@@ -713,11 +705,6 @@ class DiscogsCollection {
 
         const albumData = await this.fetchAlbumDetails(releaseId);
         
-        if (!albumData) {
-            content.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff6b6b;">Failed to load album details</div>';
-            return;
-        }
-
         const imageUrl = albumData.images && albumData.images.length > 0 ? albumData.images[0].uri : '';
         const tracklist = albumData.tracklist || [];
 
