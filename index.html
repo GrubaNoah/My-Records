@@ -1,4 +1,17 @@
-<!DOCTYPE html>
+.collection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 30px;
+            min-height: 400px;
+            align-items: start; /* Prevent vertical stretching */
+        }
+
+        .collection-grid.compact {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: start;
+        }<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -958,7 +971,9 @@
                         page++;
 
                         if (page === 2) {
-                            this.processAndDisplayRecords(allItems.slice(0, 100));
+                            // Process first batch immediately but avoid duplicates later
+                            const firstBatch = allItems.slice(0, 100);
+                            this.processAndDisplayRecords(firstBatch);
                         }
 
                         if (hasMore) {
@@ -967,13 +982,205 @@
                     }
 
                     progressContainer.style.display = 'none';
-                    this.processAndDisplayRecords(allItems);
+                    
+                    // Final processing - only process if we haven't processed all items yet
+                    const processedIds = new Set(allRecords.map(r => r.id));
+                    const unprocessedItems = allItems.filter(item => !processedIds.has(item.basic_information.id));
+                    
+                    if (unprocessedItems.length > 0) {
+                        this.processAndDisplayRecords(unprocessedItems);
+                    }
+                    
+                    // Analyze collection formats for Kallax algorithm
+                    this.analyzeCollectionFormats();
+                    
                     return allItems;
 
                 } catch (error) {
                     progressContainer.style.display = 'none';
                     throw error;
                 }
+            }
+
+            removeDuplicateReleases(releases) {
+                const seen = new Set();
+                return releases.filter(release => {
+                    const id = release.basic_information.id;
+                    if (seen.has(id)) {
+                        return false;
+                    }
+                    seen.add(id);
+                    return true;
+                });
+            }
+
+            analyzeCollectionFormats() {
+                let totalRecords = 0;
+                let gatefoldCount = 0;
+                let singleCount = 0;
+                let formatBreakdown = {};
+
+                allRecords.forEach(record => {
+                    totalRecords++;
+                    const formats = record.formats.toLowerCase();
+                    
+                    // Count format types
+                    formatBreakdown[record.formats] = (formatBreakdown[record.formats] || 0) + 1;
+                    
+                    // Detect gatefolds
+                    if (formats.includes('gatefold') || 
+                        formats.includes('2×') || 
+                        formats.includes('double') ||
+                        formats.includes('2lp') ||
+                        formats.includes('box set')) {
+                        gatefoldCount++;
+                    } else {
+                        singleCount++;
+                    }
+                });
+
+                console.log('=== COLLECTION FORMAT ANALYSIS ===');
+                console.log(`Total records: ${totalRecords}`);
+                console.log(`Gatefold/Double records: ${gatefoldCount}`);
+                console.log(`Single records: ${singleCount}`);
+                console.log(`Gatefold ratio: ${(gatefoldCount/totalRecords*100).toFixed(1)}%`);
+                console.log(`Format breakdown:`, formatBreakdown);
+
+                // Calculate Kallax capacity with real data
+                this.calculateKallaxCapacity(gatefoldCount, singleCount);
+            }
+
+            calculateKallaxCapacity(gatefoldCount, singleCount) {
+                const KALLAX_CUBE_DEPTH = 37; // cm
+                const SINGLE_LP_THICKNESS = 0.3; // cm
+                const GATEFOLD_LP_THICKNESS = 0.75; // cm
+
+                const totalRecords = gatefoldCount + singleCount;
+                const gatefoldRatio = gatefoldCount / totalRecords;
+                const singleRatio = singleCount / totalRecords;
+
+                // Average thickness per record based on actual collection
+                const avgThickness = (gatefoldRatio * GATEFOLD_LP_THICKNESS) + (singleRatio * SINGLE_LP_THICKNESS);
+                const recordsPerCube = Math.floor(KALLAX_CUBE_DEPTH / avgThickness);
+
+                console.log('=== KALLAX CAPACITY CALCULATION ===');
+                console.log(`Average record thickness: ${avgThickness.toFixed(2)}cm`);
+                console.log(`Estimated records per cube: ${recordsPerCube}`);
+
+                // Store for use in location algorithm
+                this.recordsPerCube = recordsPerCube;
+                
+                // Update all record locations
+                this.updateAllKallaxLocations();
+            }
+
+            updateAllKallaxLocations() {
+                // Noah's actual genre layout based on his Kallax organization
+                const genreLayout = [
+                    { genres: ['Bluegrass'], cubes: ['A1'], sections: [{ cube: 'A1', genres: ['Bluegrass'] }] },
+                    { genres: ['Electronic'], cubes: ['A1', 'B1'], sections: [
+                        { cube: 'A1', genres: ['Electronic'] },
+                        { cube: 'B1', genres: ['Electronic'] }
+                    ]},
+                    { genres: ['Folk'], cubes: ['B1'], sections: [{ cube: 'B1', genres: ['Folk'] }] },
+                    { genres: ['Funk'], cubes: ['B1'], sections: [{ cube: 'B1', genres: ['Funk'] }] },
+                    { genres: ['Hip Hop', 'Hip-Hop', 'Rap'], cubes: ['B2', 'C2', 'C3', 'C4'], sections: [
+                        { cube: 'B2', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
+                        { cube: 'C2', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
+                        { cube: 'C3', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] },
+                        { cube: 'C4', genres: ['Hip Hop', 'Hip-Hop', 'Rap'] }
+                    ]},
+                    { genres: ['Indie'], cubes: ['C4'], sections: [{ cube: 'C4', genres: ['Indie'] }] },
+                    { genres: ['Jam Band'], cubes: ['D1'], sections: [{ cube: 'D1', genres: ['Jam Band'] }] },
+                    { genres: ['Jazz'], cubes: ['D1', 'D2'], sections: [
+                        { cube: 'D1', genres: ['Jazz'] },
+                        { cube: 'D2', genres: ['Jazz'] }
+                    ]},
+                    { genres: ['Pop'], cubes: ['D2'], sections: [{ cube: 'D2', genres: ['Pop'] }] },
+                    { genres: ['R&B', 'RnB', 'Rhythm & Blues'], cubes: ['D2'], sections: [{ cube: 'D2', genres: ['R&B', 'RnB', 'Rhythm & Blues'] }] },
+                    { genres: ['Rock'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['Rock'] }] },
+                    { genres: ['Soul'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['Soul'] }] },
+                    { genres: ['World'], cubes: ['D4'], sections: [{ cube: 'D4', genres: ['World'] }] }
+                ];
+
+                // Calculate positions for each cube and genre section
+                this.calculateAllPositions(genreLayout);
+            }
+
+            calculateAllPositions(genreLayout) {
+                // Group records by cube and genre section
+                const cubeArrangement = {};
+
+                // Initialize cube arrangement
+                genreLayout.forEach(layout => {
+                    layout.sections.forEach(section => {
+                        if (!cubeArrangement[section.cube]) {
+                            cubeArrangement[section.cube] = [];
+                        }
+                    });
+                });
+
+                // Sort and place records into cube sections
+                genreLayout.forEach(layout => {
+                    // Get all records for this genre group
+                    const genreRecords = allRecords.filter(record => 
+                        record.genres.some(recordGenre => 
+                            layout.genres.some(layoutGenre =>
+                                recordGenre.toLowerCase().includes(layoutGenre.toLowerCase()) ||
+                                layoutGenre.toLowerCase().includes(recordGenre.toLowerCase())
+                            )
+                        )
+                    );
+
+                    // Sort: alphabetically by artist, then by release date
+                    genreRecords.sort((a, b) => {
+                        const artistCompare = a.artist.localeCompare(b.artist);
+                        if (artistCompare !== 0) return artistCompare;
+                        
+                        // If same artist, sort by year
+                        const yearA = a.year === 'Unknown' ? 9999 : parseInt(a.year);
+                        const yearB = b.year === 'Unknown' ? 9999 : parseInt(b.year);
+                        return yearA - yearB;
+                    });
+
+                    // Distribute records across sections for this genre
+                    let recordIndex = 0;
+                    layout.sections.forEach(section => {
+                        const recordsForThisSection = genreRecords.slice(
+                            recordIndex, 
+                            recordIndex + this.recordsPerCube
+                        );
+                        
+                        cubeArrangement[section.cube] = cubeArrangement[section.cube].concat(
+                            recordsForThisSection.map(record => ({
+                                ...record,
+                                genreSection: layout.genres[0] // Primary genre for this record
+                            }))
+                        );
+                        
+                        recordIndex += this.recordsPerCube;
+                    });
+                });
+
+                // Calculate final positions
+                Object.keys(cubeArrangement).forEach(cube => {
+                    cubeArrangement[cube].forEach((record, index) => {
+                        const position = index + 1; // 1-based positioning
+                        const originalRecord = allRecords.find(r => r.id === record.id);
+                        if (originalRecord) {
+                            originalRecord.kallax_location = `${cube}, ${position}`;
+                        }
+                    });
+                });
+
+                console.log('Updated all Kallax locations with precise positions');
+                console.log('Cube arrangement:', cubeArrangement);
+            }
+
+            calculateRecordLocation(record, genreLayout) {
+                // This method is now handled by calculateAllPositions
+                // but keeping it for compatibility
+                return record.kallax_location || 'Unknown';
             }
 
             async fetchAlbumDetails(releaseId) {
@@ -989,16 +1196,24 @@
             }
 
             processAndDisplayRecords(records) {
+                // Remove duplicates from the batch itself
                 const processedRecords = records.map(this.formatRecordData.bind(this));
                 
                 if (allRecords.length === 0) {
+                    // First batch - initialize
                     allRecords = processedRecords;
                     this.initializeUI();
+                    this.updateEverything();
                 } else {
-                    allRecords = allRecords.concat(processedRecords);
+                    // Subsequent batches - avoid duplicates by checking IDs
+                    const existingIds = new Set(allRecords.map(r => r.id));
+                    const newRecords = processedRecords.filter(r => !existingIds.has(r.id));
+                    
+                    if (newRecords.length > 0) {
+                        allRecords = allRecords.concat(newRecords);
+                        this.updateEverything();
+                    }
                 }
-                
-                this.updateEverything();
             }
 
             formatRecordData(record) {
@@ -1184,6 +1399,8 @@
 
             renderRecords() {
                 const grid = document.getElementById('collectionGrid');
+                
+                // Always clear and re-render to avoid duplicates
                 grid.innerHTML = '';
                 grid.className = `collection-grid ${currentView === 'compact' ? 'compact' : ''}`;
 
@@ -1197,11 +1414,15 @@
                     return;
                 }
 
+                // Render all records at once to avoid spacing issues
+                const fragment = document.createDocumentFragment();
                 displayedRecords.forEach((record, index) => {
                     const card = this.createRecordCard(record);
-                    card.style.animationDelay = `${index * 0.05}s`;
-                    grid.appendChild(card);
+                    card.style.animationDelay = `${Math.min(index * 0.02, 1)}s`; // Cap delay to prevent long waits
+                    fragment.appendChild(card);
                 });
+                
+                grid.appendChild(fragment);
             }
 
             createRecordCard(record) {
