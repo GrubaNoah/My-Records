@@ -1,4 +1,7 @@
-// ===== CONFIGURATION =====
+processAndDisplayRecords(records) {
+        const processedRecords = records.map(this.formatRecordData.bind(this));
+        
+        if (allRecords// ===== CONFIGURATION =====
 const DISCOGS_USERNAME = 'grubanoah';
 const DISCOGS_TOKEN = 'AkLGdCCPJKGYNODfFfMhfUYjBBetgGmgUxvZRupx';
 
@@ -190,7 +193,6 @@ class DiscogsCollection {
         const genreMap = {
             'Hip-Hop': 'Hip Hop',
             'Alt Rock': 'Rock',
-            'Country': 'Folk', // You put Country records in Folk section
             'Compilation': 'Unassigned', // Special handling needed
             'Synthpop': 'Pop', // You moved this to Pop
             'Latin': 'World',
@@ -214,12 +216,11 @@ class DiscogsCollection {
             if (newRecords.length > 0) {
                 allRecords = allRecords.concat(newRecords);
                 
-                // Check for records not in CSV (new additions)
-                const newUnassignedRecords = newRecords.filter(r => !r.fromCSV);
-                
-                if (newUnassignedRecords.length > 0) {
-                    this.showNewRecordAssignmentModal(newUnassignedRecords);
-                }
+                // REMOVED: No more popup for new records
+                // const newUnassignedRecords = newRecords.filter(r => !r.fromCSV);
+                // if (newUnassignedRecords.length > 0) {
+                //     this.showNewRecordAssignmentModal(newUnassignedRecords);
+                // }
                 
                 this.updateEverything();
             }
@@ -275,17 +276,17 @@ class DiscogsCollection {
         
         // Quick mapping check
         if (allTerms.some(t => t.includes('hip hop') || t.includes('rap'))) return 'Hip Hop';
+        if (allTerms.some(t => t.includes('country') || t.includes('americana') || t.includes('bluegrass'))) return 'Country';
         if (allTerms.some(t => t.includes('electronic') || t.includes('techno'))) return 'Electronic';
         if (allTerms.some(t => t.includes('rock'))) return 'Rock';
         if (allTerms.some(t => t.includes('jazz'))) return 'Jazz';
-        if (allTerms.some(t => t.includes('folk') || t.includes('country'))) return 'Folk';
+        if (allTerms.some(t => t.includes('folk') || t.includes('singer') || t.includes('acoustic'))) return 'Folk';
         if (allTerms.some(t => t.includes('funk'))) return 'Funk';
         if (allTerms.some(t => t.includes('indie') || t.includes('alternative'))) return 'Indie';
         if (allTerms.some(t => t.includes('pop'))) return 'Pop';
         if (allTerms.some(t => t.includes('soul'))) return 'Soul';
         if (allTerms.some(t => t.includes('r&b') || t.includes('rnb'))) return 'R&B';
         if (allTerms.some(t => t.includes('world') || t.includes('reggae'))) return 'World';
-        if (allTerms.some(t => t.includes('bluegrass'))) return 'Bluegrass';
         if (allTerms.some(t => t.includes('jam'))) return 'Jam Band';
         
         return 'Unassigned';
@@ -445,9 +446,9 @@ class DiscogsCollection {
     }
 
     updateGenreFilters() {
-        // Use your exact CSV genres plus Kallax mappings
+        // Use your exact CSV genres plus Kallax mappings - ADDED COUNTRY
         const kallaxGenres = [
-            'Bluegrass', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
+            'Bluegrass', 'Country', 'Electronic', 'Folk', 'Funk', 'Hip Hop', 
             'Indie', 'Jam Band', 'Jazz', 'Pop', 'R&B', 'Rock', 'Soul', 'World'
         ];
         
@@ -645,15 +646,23 @@ class DiscogsCollection {
             });
         });
 
-        // Define layout once
+        // Define layout once - COUNTRY IN A1 BETWEEN BLUEGRASS AND ELECTRONIC
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
+            { genre: 'Country', cubes: ['A1'] },
             { genre: 'Electronic', cubes: ['A1', 'B1'] },
             { genre: 'Folk', cubes: ['B1'] },
             { genre: 'Funk', cubes: ['B1'] },
             { genre: 'Hip Hop', cubes: ['B2', 'C2', 'C3', 'C4'] },
             { genre: 'Indie', cubes: ['C4'] },
             { genre: 'Jam Band', cubes: ['D1'] },
+            { genre: 'Jazz', cubes: ['D1', 'D2'] },
+            { genre: 'Pop', cubes: ['D2'] },
+            { genre: 'R&B', cubes: ['D2'] },
+            { genre: 'Rock', cubes: ['D4'] },
+            { genre: 'Soul', cubes: ['D4'] },
+            { genre: 'World', cubes: ['D4'] }
+        ];d', cubes: ['D1'] },
             { genre: 'Jazz', cubes: ['D1', 'D2'] },
             { genre: 'Pop', cubes: ['D2'] },
             { genre: 'R&B', cubes: ['D2'] },
@@ -783,6 +792,7 @@ class DiscogsCollection {
                     <select class="genre-dropdown" data-record-id="${record.id}" style="display: none;">
                         <option value="">Select Genre...</option>
                         <option value="Bluegrass">Bluegrass</option>
+                        <option value="Country">Country</option>
                         <option value="Electronic">Electronic</option>
                         <option value="Folk">Folk</option>
                         <option value="Funk">Funk</option>
@@ -877,6 +887,7 @@ class DiscogsCollection {
         
         const genreLayout = [
             { genre: 'Bluegrass', cubes: ['A1'] },
+            { genre: 'Country', cubes: ['A1'] },
             { genre: 'Electronic', cubes: ['A1', 'B1'] },
             { genre: 'Folk', cubes: ['B1'] },
             { genre: 'Funk', cubes: ['B1'] },
